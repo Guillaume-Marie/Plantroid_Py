@@ -103,8 +103,7 @@ def nutrient_absorption(Plant, Env):
 def estimate_WUE(Plant, Env):
     """
     Efficacité d'usage de l'eau (WUE) : ratio sucre produit / gramme d'eau
-    """
-    
+    """ 
     temp_diff = abs(Plant["temperature"]["photo"] - Plant["T_optim"]) / Plant["T_optim"]
     penalty = (1.0 - temp_diff) * Plant["stomatal_conductance"]
     if penalty < 0.33:
@@ -112,7 +111,26 @@ def estimate_WUE(Plant, Env):
     if Plant["biomass"]["photo"] <= 0:
         penalty = 0.33
     return Gl.base_WUE * penalty
+
+def compute_root_explored_volume(Plant):
+    """
+    Calcule le volume de sol exploré par les racines en fonction de la biomasse racinaire.
+    """
+    explored_volume = Plant["biomass"]["absorp"] * Gl.k_root  # cm³
+    return min(explored_volume, Gl.total_soil_volume)
+
+
+def compute_available_water(Plant, Env):
+    """
+    Calcule l'eau disponible pour la plante en fonction du volume de sol exploré.
+    """
+    explored_volume = compute_root_explored_volume(Plant)   
+    # Calcul de la teneur en eau du sol (g d’eau / cm³ de sol)
+    soil_moisture = Env["soil"]["water"] / Gl.total_soil_volume  # g d'eau / cm³ de sol
+    available_water = explored_volume * soil_moisture  # g d'eau total disponible
     
+    return min(available_water, Env["soil"]["water"])  # On ne peut pas extraire plus que ce qui est dispo
+
 def compute_max_transpiration_capacity(Plant, Env):
     """
     Capacité maximale de transpiration (en g d'eau / cycle) 
@@ -124,7 +142,7 @@ def compute_max_transpiration_capacity(Plant, Env):
     absorp_capacity = Plant["biomass"]["absorp"] * Plant["root_absorption_coefficient"] * Gl.DT
     photo_capacity = Plant["biomass"]["photo"] * Plant["slai"] * Plant["stomatal_conductance"] \
                      * Plant["transpiration_coefficient"] * Gl.DT
-    soil_capacity = Env["soil"]["water"] * Plant["soil_supply_coefficient"]
+    soil_capacity = compute_available_water(Plant, Env)
 
     Plant["max_transpiration_capacity"] = min(soil_capacity, absorp_capacity,  photo_capacity)
 
@@ -253,6 +271,19 @@ def post_process_success(Plant, Env, process):
     elif process == "reproduction":
         restore_health(Plant)
 
+def post_process_resist(Plant, Env, process):
+    if process == "transpiration": 
+        destroy_biomass(Plant, Env, "photo", 0.005)
+    elif process == "maintenance":
+        destroy_biomass(Plant, Env, "support",0.005)
+    elif process == "extension":
+        adjust_success_cycle(Plant, "extension")
+        allocate_new_biomass(Plant)
+        restore_health(Plant)
+    elif process == "reproduction":
+        adjust_success_cycle(Plant, "reproduction")
+        restore_health(Plant)
+
 def post_process_fail(Plant, Env, process):
     if process == "transpiration": 
         pay_cost(Plant, Env, process)
@@ -291,15 +322,15 @@ def handle_process(Plant, Env, process):
         return
 
     draw_from_reserves(Plant, process)
-    print("draw_from_reserves for",process)
+    #print("draw_from_reserves for",process)
     if resources_available(Plant, process):
         update_stress_history(Plant, process)
         pay_cost(Plant, Env, process)
-        post_process_success(Plant, Env, process)
+        post_process_resist(Plant, Env, process)
         return
 
     update_stress_history(Plant, process)
-    print("adjust_costs for",process)
+    #print("adjust_costs for",process)
     adjust_cost(Plant, Env, process)
     post_process_fail(Plant, Env, process)
 
@@ -367,7 +398,8 @@ def calculate_cost(Plant, Env, process):
 def adjust_cost(Plant, Env, process):
     """
     Ajuste le coût si les ressources ou la capacité sont insuffisantes.  
-    """
+    """    
+    Plant["adjusted_used"][process] = True
     if process == "transpiration":
         adjust_stomatal_conductance(Plant, Env)
     elif process == "extension":
@@ -408,7 +440,7 @@ def draw_from_reserves(Plant, process):
     """
     for r in Gl.resource:
         shortfall = Plant["cost"][process][r] - Plant["flux_in"][r]
-        print("shortfal:",shortfall, "for :", r," in process :", process)
+        #print("shortfal:",shortfall, "for :", r," in process :", process)
         #print("cost:",Plant["cost"][process][r])
         #print("avail:",Plant["flux_in"][r])
         if shortfall > 0 and Plant["reserve"][r] > 0:

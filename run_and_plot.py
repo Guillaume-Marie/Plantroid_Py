@@ -76,8 +76,8 @@ def simulate_and_plot():
     data, final_Plant, final_env = Ti.run_simulation_collect_data(Gl.max_cycles)
     day_data, night_data = aggregate_day_night(data, points_per_day=24, day_hours=12)
 
-    day_fig, day_axes = plt.subplots(nrows=7, ncols=3, figsize=(15, 35))
-    day_fig.suptitle("Résultats de la simulation (agrégation journalière) - Modèle Plantroid", fontsize=16)
+    day_fig, day_axes = plt.subplots(nrows=4, ncols=4, figsize=(65, 35))
+    day_fig.suptitle("", fontsize=16)
 
     # ------------------------------------------------------------------
     # Rangée 0
@@ -100,144 +100,111 @@ def simulate_and_plot():
     day_axes[0,2].set_ylabel("SLAI")
     day_axes[0,2].set_title("Surface foliaire (SLAI)")
 
+    day_axes[0,3].plot(day_data["time"], day_data["health_state"])
+    day_axes[0,3].set_xlabel("Jour")
+    day_axes[0,3].set_ylabel("Santé (0..100)")
+    day_axes[0,3].set_title("État de santé")
+
     # ------------------------------------------------------------------
     # Rangée 1
     # ------------------------------------------------------------------
-    day_axes[1,0].plot(day_data["time"], day_data["health_state"])
+    day_axes[1,0].plot(day_data["time"], day_data["sugar_photo"], label="sugar_photo")
     day_axes[1,0].set_xlabel("Jour")
-    day_axes[1,0].set_ylabel("Santé (0..100)")
-    day_axes[1,0].set_title("État de santé")
+    day_axes[1,0].set_ylabel("Flux_in spéciaux (g)")
+    day_axes[1,0].set_title("Flux_in après transpiration / photo")
+    day_axes[1,0].legend()
 
-    day_axes[1,1].plot(day_data["time"], day_data["sugar_in"], label="sugar_in")
-    day_axes[1,1].plot(day_data["time"], day_data["water_in"], label="water_in")
-    day_axes[1,1].plot(day_data["time"], day_data["nutrient_in"], label="nutrient_in")
+    day_axes[1,1].plot(day_data["time"], day_data["reserve_sugar"], label="Sucre")
+    day_axes[1,1].plot(day_data["time"], day_data["reserve_water"], label="Eau")
+    day_axes[1,1].plot(day_data["time"], day_data["reserve_nutrient"], label="Nutriments")
     day_axes[1,1].set_xlabel("Jour")
-    day_axes[1,1].set_ylabel("Flux entrants (g)")
-    day_axes[1,1].set_title("Flux entrants (g)")
+    day_axes[1,1].set_ylabel("Réserves (g)")
+    day_axes[1,1].set_title("Réserves internes")
     day_axes[1,1].legend()
 
-    day_axes[1,2].plot(day_data["time"], day_data["water_after_transp"], label="water_after_transp")
+    day_axes[1,2].plot(day_data["time"], day_data["soil_water"], label="Soil water")
     day_axes[1,2].set_xlabel("Jour")
-    day_axes[1,2].set_ylabel("Flux sortants (g)")
-    day_axes[1,2].set_title("Flux sortants (g)")
+    day_axes[1,2].set_ylabel("Eau (g)")
+    day_axes[1,2].set_title("Eau dans le sol")
     day_axes[1,2].legend()
 
-    # ------------------------------------------------------------------
-    # Rangée 2
-    # ------------------------------------------------------------------
-    day_axes[2,0].plot(day_data["time"], day_data["sugar_photo"], label="sugar_photo")
-    day_axes[2,0].set_xlabel("Jour")
-    day_axes[2,0].set_ylabel("Flux_in spéciaux (g)")
-    day_axes[2,0].set_title("Flux_in après transpiration / photo")
-    day_axes[2,0].legend()
+    day_axes[1,3].plot(day_data["time"], day_data["atmos_temperature"], label="Tair")
+    day_axes[1,3].plot(day_data["time"], day_data["leaf_temperature_before"], label="Tbf")
+    day_axes[1,3].plot(day_data["time"], day_data["leaf_temperature_after"], label="Taf") 
+    day_axes[1,3].set_xlabel("Jour")
+    day_axes[1,3].set_ylabel("Température (°C)")
+    day_axes[1,3].set_title("Température foliaire")
+    day_axes[1,3].legend()
 
-    day_axes[2,1].plot(day_data["time"], day_data["reserve_sugar"], label="Sucre")
-    day_axes[2,1].plot(day_data["time"], day_data["reserve_water"], label="Eau")
-    day_axes[2,1].plot(day_data["time"], day_data["reserve_nutrient"], label="Nutriments")
+    # ------------------------------------------------------------------
+    # Rangée 2 : Températures
+    # ------------------------------------------------------------------
+    day_axes[2,0].plot(day_data["time"], day_data["stomatal_conductance"])
+    day_axes[2,0].set_xlabel("Jour")
+    day_axes[2,0].set_ylabel("Conductance (0..1)")
+    day_axes[2,0].set_title("Conductance stomatique")
+
+    day_axes[2,1].plot(day_data["time"], day_data["success_extension"], label="Extension")
+    day_axes[2,1].plot(day_data["time"], day_data["success_reproduction"], label="Reproduction")
     day_axes[2,1].set_xlabel("Jour")
-    day_axes[2,1].set_ylabel("Réserves (g)")
-    day_axes[2,1].set_title("Réserves internes")
+    day_axes[2,1].set_ylabel("Succès (0..1)")
+    day_axes[2,1].set_title("Succès des processus")
     day_axes[2,1].legend()
 
-    day_axes[2,2].plot(day_data["time"], day_data["soil_water"], label="Soil water")
+    day_axes[2,2].plot(day_data["time"], day_data["transpiration_cooling"], label="Cooling")
+    day_axes[2,2].plot(day_data["time"], day_data["max_transpiration_capacity"], label="Max capacity")
     day_axes[2,2].set_xlabel("Jour")
-    day_axes[2,2].set_ylabel("Eau (g)")
-    day_axes[2,2].set_title("Eau dans le sol")
+    day_axes[2,2].set_ylabel("H2O (g/jour)")
+    day_axes[2,2].set_title("Détails Transpiration")
     day_axes[2,2].legend()
 
+    day_axes[2,3].plot(day_data["time"], day_data["raw_sugar_flux"], label="Flux brut (g/s*gFeuille)")
+    day_axes[2,3].plot(day_data["time"], day_data["pot_sugar"], label="Pot. (g/s, avant T_lim)")
+    day_axes[2,3].set_xlabel("Jour")
+    day_axes[2,3].set_ylabel("Valeurs calculées")
+    day_axes[2,3].set_title("Détails Photosynthèse")
+    day_axes[2,3].legend()
+
     # ------------------------------------------------------------------
-    # Rangée 3 : Températures
+    # Rangée 3 : Météo (lumière, pluie)
     # ------------------------------------------------------------------
-    day_axes[3,0].plot(day_data["time"], day_data["atmos_temperature"], label="Tair")
-    day_axes[3,0].plot(day_data["time"], day_data["leaf_temperature_before"], label="Tbf")
-    day_axes[3,0].plot(day_data["time"], day_data["leaf_temperature_after"], label="Taf") 
+    day_axes[3,0].plot(day_data["time"], day_data["atmos_light"], label="Lumière")
     day_axes[3,0].set_xlabel("Jour")
-    day_axes[3,0].set_ylabel("Température (°C)")
-    day_axes[3,0].set_title("Température foliaire")
+    day_axes[3,0].set_ylabel("Luminosité (W/g?)")
+    day_axes[3,0].set_title("Luminosité atmosphérique")
     day_axes[3,0].legend()
 
-    day_axes[3,1].plot(day_data["time"], day_data["stomatal_conductance"])
+    day_axes[3,1].plot(day_data["time"], day_data["adjusted_used_maintenance"], label="Adjusted Maint.")
+    day_axes[3,1].plot(day_data["time"], day_data["adjusted_used_extension"], label="Adjusted Ext.")
+    day_axes[3,1].plot(day_data["time"], day_data["adjusted_used_reproduction"], label="Adjusted Repr.")
     day_axes[3,1].set_xlabel("Jour")
-    day_axes[3,1].set_ylabel("Conductance (0..1)")
-    day_axes[3,1].set_title("Conductance stomatique")
-
-    day_axes[3,2].plot(day_data["time"], day_data["success_extension"], label="Extension")
-    day_axes[3,2].plot(day_data["time"], day_data["success_reproduction"], label="Reproduction")
-    day_axes[3,2].set_xlabel("Jour")
-    day_axes[3,2].set_ylabel("Succès (0..1)")
-    day_axes[3,2].set_title("Succès des processus")
-    day_axes[3,2].legend()
-
-    # ------------------------------------------------------------------
-    # Rangée 4 : Transpiration / photosynthèse
-    # ------------------------------------------------------------------
-    day_axes[4,0].plot(day_data["time"], day_data["transpiration_cooling"], label="Cooling")
-    day_axes[4,0].plot(day_data["time"], day_data["max_transpiration_capacity"], label="Max capacity")
-    day_axes[4,0].set_xlabel("Jour")
-    day_axes[4,0].set_ylabel("H2O (g/jour)")
-    day_axes[4,0].set_title("Détails Transpiration")
-    day_axes[4,0].legend()
-
-    day_axes[4,1].plot(day_data["time"], day_data["raw_sugar_flux"], label="Flux brut (g/s*gFeuille)")
-    day_axes[4,1].plot(day_data["time"], day_data["pot_sugar"], label="Pot. (g/s, avant T_lim)")
-    day_axes[4,1].set_xlabel("Jour")
-    day_axes[4,1].set_ylabel("Valeurs calculées")
-    day_axes[4,1].set_title("Détails Photosynthèse")
-    day_axes[4,1].legend()
-    day_axes[4,2].axis("off")
-
-    # ------------------------------------------------------------------
-    # Rangée 5 : Météo (lumière, pluie)
-    # ------------------------------------------------------------------
-    day_axes[5,0].plot(day_data["time"], day_data["atmos_light"], label="Lumière")
-    day_axes[5,0].set_xlabel("Jour")
-    day_axes[5,0].set_ylabel("Luminosité (W/g?)")
-    day_axes[5,0].set_title("Luminosité atmosphérique")
-    day_axes[5,0].legend()
-
-    day_axes[5,1].plot(day_data["time"], day_data["rain_event"], label="Pluie (somme/jour)")
-    day_axes[5,1].set_xlabel("Jour")
-    day_axes[5,1].set_ylabel("Pluie (g eau/jour)")
-    day_axes[5,1].set_title("Événement de pluie")
-    day_axes[5,1].legend()
-
-    # On laisse 5,2 vide pour l’instant
-    day_axes[5,2].axis("off")
-
-    # ------------------------------------------------------------------
-    # Rangée 6 : Variables booléennes + ratio + stress
-    # ------------------------------------------------------------------
-    # reserve_used & adjusted_used
-    day_axes[6,0].plot(day_data["time"], day_data["reserve_used_maintenance"], label="Reserve used Maint.")
-    day_axes[6,0].plot(day_data["time"], day_data["reserve_used_extension"], label="Reserve used Ext.")
-    day_axes[6,0].plot(day_data["time"], day_data["reserve_used_reproduction"], label="Reserve used Repr.")
-    day_axes[6,0].set_xlabel("Jour")
-    day_axes[6,0].set_ylabel("0 ou 1")
-    day_axes[6,0].set_title("reserve_used (bool)")
-    day_axes[6,0].legend()
-
-    day_axes[6,1].plot(day_data["time"], day_data["adjusted_used_maintenance"], label="Adjusted Maint.")
-    day_axes[6,1].plot(day_data["time"], day_data["adjusted_used_extension"], label="Adjusted Ext.")
-    day_axes[6,1].plot(day_data["time"], day_data["adjusted_used_reproduction"], label="Adjusted Repr.")
-    day_axes[6,1].set_xlabel("Jour")
-    day_axes[6,1].set_ylabel("0 ou 1")
-    day_axes[6,1].set_title("adjusted_used (bool)")
-    day_axes[6,1].legend()
+    day_axes[3,1].set_ylabel("0 ou 1")
+    day_axes[3,1].set_title("adjusted_used (bool)")
+    day_axes[3,1].legend()
 
     # Ratios + stress
-    day_axes[6,2].plot(day_data["time"], day_data["ratio_support"], label="support")
-    day_axes[6,2].plot(day_data["time"], day_data["ratio_photo"], label="photo")
-    day_axes[6,2].plot(day_data["time"], day_data["ratio_absorp"], label="absorp")
-    day_axes[6,2].plot(day_data["time"], day_data["stress_sugar"], label="stress_sugar", linestyle="--")
-    day_axes[6,2].plot(day_data["time"], day_data["stress_water"], label="stress_water", linestyle="--")
-    day_axes[6,2].set_xlabel("Jour")
-    day_axes[6,2].set_ylabel("Ratios / Stress")
-    day_axes[6,2].set_title("Ratios d’allocation & Stress")
-    day_axes[6,2].legend()
+    day_axes[3,2].plot(day_data["time"], day_data["ratio_support"], label="support")
+    day_axes[3,2].plot(day_data["time"], day_data["ratio_photo"], label="photo")
+    day_axes[3,2].plot(day_data["time"], day_data["ratio_absorp"], label="absorp")
+    day_axes[3,2].plot(day_data["time"], day_data["stress_sugar"], label="stress_sugar", linestyle="--")
+    day_axes[3,2].plot(day_data["time"], day_data["stress_water"], label="stress_water", linestyle="--")
+    day_axes[3,2].set_xlabel("Jour")
+    day_axes[3,2].set_ylabel("Ratios / Stress")
+    day_axes[3,2].set_title("Ratios d’allocation & Stress")
+    day_axes[3,2].legend()
+
+    # reserve_used & adjusted_used
+    day_axes[3,3].plot(day_data["time"], day_data["reserve_used_maintenance"], label="Reserve used Maint.")
+    day_axes[3,3].plot(day_data["time"], day_data["reserve_used_extension"], label="Reserve used Ext.")
+    day_axes[3,3].plot(day_data["time"], day_data["reserve_used_reproduction"], label="Reserve used Repr.")
+    day_axes[3,3].set_xlabel("Jour")
+    day_axes[3,3].set_ylabel("0 ou 1")
+    day_axes[3,3].set_title("reserve_used (bool)")
+    day_axes[3,3].legend()
 
     day_fig.tight_layout()
     plt.show()
-    
+
     night_fig, night_axes = plt.subplots(nrows=7, ncols=3, figsize=(15, 35))
     night_fig.suptitle("Résultats de la simulation (agrégation journalière) - Modèle Plantroid", fontsize=16)
 

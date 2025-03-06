@@ -104,7 +104,7 @@ def run_simulation_collect_data(max_cycles):
                 Fu.adapt_and_optimize(Pl.Plant, Ev.Environment)
 
         # 10. Mortalité
-        if Pl.Plant["biomass_total"] <= 0.0 or Pl.Plant["dying_state_count"] > Gl.dying_state_thr:
+        if Pl.Plant["biomass_total"] <= 0.0: # or Pl.Plant["dying_state_count"] > Gl.dying_state_thr:
             Pl.Plant["alive"] = False
 
         # 11. Sauvegarde historique

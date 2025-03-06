@@ -4,7 +4,7 @@ import math
 
 #Environnement initial
 Environment = {
-    "soil":    {"water": 100000.0, "nutrient": 5000000.0},
+    "soil":    {"water": 2000000.0, "nutrient": 5000000.0},
     "litter":  {"absorp": 20000.0, "photo": 500.0, "support": 500.0},
     "atmos":   {"Co2": 1000.0, "light": 1000.0, "water": 100.0, "temperature": 25.0}
 }
@@ -50,8 +50,8 @@ def update_environment(time, Env):
     # Gérer la pluie comme un événement explicite
     Env["rain_event"] = 0.0
     if time % 100 == 0:
-        Env["soil"]["water"] += 8000.0
-        Env["rain_event"] = 8000.0
+        Env["soil"]["water"] += 50000.0
+        Env["rain_event"] = 50000.0
 
 def co2_availability(time, Env):
     """
