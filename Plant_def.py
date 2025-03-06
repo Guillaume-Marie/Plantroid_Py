@@ -9,6 +9,7 @@ Plant = {
     "light_absorption_fraction":   0.7,
     "root_absorption_coefficient": 0.005,
     "transpiration_coefficient":   0.002,
+    "support_transport_coefficient": 200.0,
     "soil_supply_coefficient":     0.1,
     "water_nutrient":              0.003,
     "conduction_coeff":            0.001,

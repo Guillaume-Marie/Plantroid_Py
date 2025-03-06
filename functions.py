@@ -142,9 +142,10 @@ def compute_max_transpiration_capacity(Plant, Env):
     absorp_capacity = Plant["biomass"]["absorp"] * Plant["root_absorption_coefficient"] * Gl.DT
     photo_capacity = Plant["biomass"]["photo"] * Plant["slai"] * Plant["stomatal_conductance"] \
                      * Plant["transpiration_coefficient"] * Gl.DT
+    support_capacity = Plant["biomass"]["support"] * Plant["support_transport_coefficient"]
     soil_capacity = compute_available_water(Plant, Env)
 
-    Plant["max_transpiration_capacity"] = min(soil_capacity, absorp_capacity,  photo_capacity)
+    Plant["max_transpiration_capacity"] = min(soil_capacity, absorp_capacity, support_capacity ,photo_capacity)
 
 def find_transpiration_for_cooling(Plant, Env):
     """
