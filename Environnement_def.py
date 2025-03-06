@@ -33,18 +33,25 @@ def update_environment(time, Env):
         # fraction du jour
         frac_day = t_in_day / float(day_length)
         # sinus qui démarre à 0, culmine au milieu du jour
-        Env["atmos"]["light"] = max(500.0,mod*1300.0) * max(0.0, math.sin(math.pi * frac_day))
+        Env["atmos"]["light"] = max(600.0,mod*1500.0) * max(0.0, math.sin(math.pi * frac_day))
         # Température : passe de 15°C le matin à 25°C en milieu de journée
-        Env["atmos"]["temperature"] = 15.0 + (mod*10.0) * frac_day
+        Env["atmos"]["temperature"] = 15.0 + (mod*15.0) * frac_day
     else:
         Env["atmos"]["light"] = 0.0
         # la nuit, on redescend de 25°C à 15°C
         frac_night = (t_in_day - day_length) / float(day_length)
-        Env["atmos"]["temperature"] = 25.0 - max(5.0,mod*15.0) * frac_night
+        Env["atmos"]["temperature"] = 15.0 - mod*8.0 * frac_night
 
-    # On peut faire pleuvoir un peu toutes les 6h (ex. 10 g d'eau)
+    """
+    Met à jour l'environnement en fonction de l'heure (en cycles).
+    """
+    # ... (pas de changement pour la lumière/ température)...
+
+    # Gérer la pluie comme un événement explicite
+    Env["rain_event"] = 0.0
     if time % 100 == 0:
         Env["soil"]["water"] += 8000.0
+        Env["rain_event"] = 8000.0
 
 def co2_availability(time, Env):
     """

@@ -35,7 +35,24 @@ history = {
     "transpiration_cooling": [],
     "max_transpiration_capacity": [],
     "raw_sugar_flux": [],
-    "pot_sugar": []
+    "pot_sugar": [],
+    "atmos_light": [],  # luminosité ambiante
+    "rain_event": [],   # pluie (g d’eau vers le sol)
+    # Reserve used (bool -> 0 ou 1) pour 3 process
+    "reserve_used_maintenance": [],
+    "reserve_used_extension": [],
+    "reserve_used_reproduction": [],
+    # Adjusted used (bool -> 0 ou 1)
+    "adjusted_used_maintenance": [],
+    "adjusted_used_extension": [],
+    "adjusted_used_reproduction": [],
+    # Ratios d’allocation
+    "ratio_support": [],
+    "ratio_photo": [],
+    "ratio_absorp": [],
+    # Stress
+    "stress_sugar": [],
+    "stress_water": []
 }
 
 def history_update(Plant, history, Environment, time):
@@ -74,3 +91,32 @@ def history_update(Plant, history, Environment, time):
         history["max_transpiration_capacity"].append(Plant["diag"].get("max_transpiration_capacity", 0.0))
         history["raw_sugar_flux"].append(Plant["diag"].get("raw_sugar_flux", 0.0))
         history["pot_sugar"].append(Plant["diag"].get("pot_sugar", 0.0))
+        history["atmos_light"].append(Environment["atmos"]["light"])
+        history["rain_event"].append(Environment["rain_event"])
+
+        # reserve_used / adjusted_used en 0 ou 1
+        history["reserve_used_maintenance"].append(1 if Plant["reserve_used"]["maintenance"] else 0)
+        # On n’a pas "extension" dans reserve_used, donc on met 0:
+        history["reserve_used_extension"].append(0)
+        history["reserve_used_reproduction"].append(1 if Plant["reserve_used"]["reproduction"] else 0)
+
+        history["adjusted_used_maintenance"].append(1 if Plant["adjusted_used"]["maintenance"] else 0)
+        history["adjusted_used_extension"].append(1 if Plant["adjusted_used"]["extension"] else 0)
+        history["adjusted_used_reproduction"].append(1 if Plant["adjusted_used"]["reproduction"] else 0)
+
+        # Ratios d’allocation
+        history["ratio_support"].append(Plant["ratio_allocation"]["support"])
+        history["ratio_photo"].append(Plant["ratio_allocation"]["photo"])
+        history["ratio_absorp"].append(Plant["ratio_allocation"]["absorp"])
+
+        # Stress : on prend la dernière valeur des listes de stress
+        # (sugar et water) si elles existent, sinon 0
+        if Plant["stress_history"]["sugar"]:
+            history["stress_sugar"].append(Plant["stress_history"]["sugar"][-1])
+        else:
+            history["stress_sugar"].append(0.0)
+
+        if Plant["stress_history"]["water"]:
+            history["stress_water"].append(Plant["stress_history"]["water"][-1])
+        else:
+            history["stress_water"].append(0.0)
