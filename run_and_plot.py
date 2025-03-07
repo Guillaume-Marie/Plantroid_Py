@@ -2,11 +2,9 @@
 import matplotlib.pyplot as plt
 import time_loop as Ti
 import global_constants as Gl
-
-# run_and_plot.py
-import matplotlib.pyplot as plt
-import time_loop as Ti
-import global_constants as Gl
+import copy
+import numpy as np
+import Plant_def as Pl
 
 def aggregate_day_night(history, points_per_day=24, day_hours=12):
     """

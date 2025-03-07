@@ -25,6 +25,10 @@ def run_simulation_collect_data(max_cycles):
     cycle_count = 0
     time = 0  # réinitialisation
 
+    Pl.Plant["biomass"]['photo'] = Pl.Plant["biomass_total"] * Pl.Plant["ratio_allocation"]['photo']
+    Pl.Plant["biomass"]['support'] = Pl.Plant["biomass_total"] * Pl.Plant["ratio_allocation"]['support']
+    Pl.Plant["biomass"]['absorp'] = Pl.Plant["biomass_total"] * Pl.Plant["ratio_allocation"]['absorp']
+
     # Boucle principale
     while Pl.Plant["alive"] and cycle_count < max_cycles:
         time += 1
@@ -80,12 +84,7 @@ def run_simulation_collect_data(max_cycles):
             Fu.handle_process(Pl.Plant, Ev.Environment, "extension")
             Fu.update_success_history(Pl.Plant, "extension")
 
-        # 7. Réserves
-        Fu.refill_reserve(Pl.Plant, "sugar")
-        Fu.refill_reserve(Pl.Plant, "water")
-        Fu.refill_reserve(Pl.Plant, "nutrient")
-
-        # 8. Reproduction
+        # 7. Reproduction
         if (Pl.Plant["biomass_total"] >= Pl.Plant["reproduction_biomass_thr"] and
             Pl.Plant["health_state"] >= Pl.Plant["reproduction_health_thr"] and
             Ev.Environment["atmos"]["light"] > 0.0):
@@ -94,17 +93,21 @@ def run_simulation_collect_data(max_cycles):
         else:
             Pl.Plant["success_cycle"]["reproduction"] = 0.0
             Fu.update_success_history(Pl.Plant, "reproduction")
+            # 8. Réserves
+            Fu.refill_reserve(Pl.Plant, "sugar")
+            Fu.refill_reserve(Pl.Plant, "water")
+            Fu.refill_reserve(Pl.Plant, "nutrient")
 
         # 9. Adaptation
         if Pl.Plant["biomass_total"] >= Pl.Plant["reproduction_biomass_thr"]:
             if Gl.trend_is_negative(Pl.Plant["success_history"]["reproduction"]):
-                Fu.adapt_and_optimize(Pl.Plant, Ev.Environment)
+                Fu.adapt_water_supply(Pl.Plant, Ev.Environment)
         else:
             if Gl.trend_is_negative(Pl.Plant["success_history"]["extension"]):
-                Fu.adapt_and_optimize(Pl.Plant, Ev.Environment)
+                Fu.adapt_water_supply(Pl.Plant, Ev.Environment)
 
         # 10. Mortalité
-        if Pl.Plant["biomass_total"] <= 0.1: # or Pl.Plant["dying_state_count"] > Gl.dying_state_thr:
+        if Pl.Plant["biomass_total"] <= 0.0001: 
             Pl.Plant["alive"] = False
 
         # 11. Sauvegarde historique

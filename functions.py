@@ -133,19 +133,43 @@ def compute_available_water(Plant, Env):
 
 def compute_max_transpiration_capacity(Plant, Env):
     """
-    Capacité maximale de transpiration (en g d'eau / cycle) 
+    Calcule la capacité maximale de transpiration (en g d'eau / cycle) 
     selon :
     - capacité d'absorption des racines
     - capacité de transpiration foliaire
+    - capacité de transport (biomasse support)
     - eau disponible dans le sol
+
+    Modifié pour sauvegarder le compartiment limitant dans diag["transp_limit_pool"].
     """
-    absorp_capacity = Plant["biomass"]["absorp"] * Plant["root_absorption_coefficient"] * Gl.DT
-    photo_capacity = Plant["biomass"]["photo"] * Plant["slai"] * Plant["stomatal_conductance"] \
-                     * Plant["transpiration_coefficient"] * Gl.DT
-    support_capacity = Plant["biomass"]["support"] * Plant["support_transport_coefficient"]
+    # 1) Calcul des capacités individuelles
+    absorp_capacity = (Plant["biomass"]["absorp"]
+                       * Plant["root_absorption_coefficient"]
+                       * Gl.DT)
+    photo_capacity = (Plant["biomass"]["photo"]
+                      * Plant["slai"]
+                      * Plant["stomatal_conductance"]
+                      * Plant["transpiration_coefficient"]
+                      * Gl.DT)
+    support_capacity = (Plant["biomass"]["support"]
+                        * Plant["support_transport_coefficient"])
     soil_capacity = compute_available_water(Plant, Env)
 
-    Plant["max_transpiration_capacity"] = min(soil_capacity, absorp_capacity, support_capacity ,photo_capacity)
+    # 2) Rassembler les capacités dans un dictionnaire
+    capacities = {
+        "absorp": absorp_capacity,
+        "photo": photo_capacity,
+        "support": support_capacity,
+        "soil": soil_capacity
+    }
+
+    # 3) Extraire la valeur minimale et la clé correspondante
+    min_capacity = min(capacities.values())
+    limiting_pool = min(capacities, key=capacities.get)
+
+    # 4) Stocker la valeur et l'information du compartiment limitant
+    Plant["max_transpiration_capacity"] = min_capacity
+    Plant["transp_limit_pool"] = limiting_pool
 
 def find_transpiration_for_cooling(Plant, Env):
     """
@@ -509,32 +533,34 @@ def adapt_leaf_structure(Plant, Env):
     elif Env["atmos"]["light"] > 800:
         Plant["slai"] = max(0.01, Plant["slai"] - Gl.delta_adapt)
 
-def adapt_and_optimize(Plant, Env):
+def adapt_water_supply(Plant, Env):
     """
     Réallocation de la biomasse en cas de stress eau/sucre chroniques.
     """
-    mean_stress_water = sum(Plant["stress_history"]["water"])/len(Plant["stress_history"]["water"]) \
-                        if Plant["stress_history"]["water"] else 0.0
-    mean_stress_sugar = sum(Plant["stress_history"]["sugar"])/len(Plant["stress_history"]["sugar"]) \
-                        if Plant["stress_history"]["sugar"] else 0.0
 
-    if mean_stress_water > mean_stress_sugar:
-        # Stress eau
+    if Plant["transp_limit_pool"]== "soil":
         #Plant["storage_fraction"]["water"]    += Gl.delta_adapt
         #Plant["storage_fraction"]["nutrient"] += Gl.delta_adapt
         if Plant["ratio_allocation"]["absorp"] <= 0.8:
             Plant["ratio_allocation"]["support"]  -= Gl.delta_adapt/2
             Plant["ratio_allocation"]["absorp"]   += Gl.delta_adapt
             Plant["ratio_allocation"]["photo"]    -= Gl.delta_adapt/2
-        #destroy_biomass(Plant, Env, "absorp")
-    else:
-        # Stress sucre
+    elif Plant["transp_limit_pool"]== "absorp":
+        if Plant["ratio_allocation"]["absorp"] <= 0.8:
+            Plant["ratio_allocation"]["support"]  -= Gl.delta_adapt/2
+            Plant["ratio_allocation"]["absorp"]   += Gl.delta_adapt
+            Plant["ratio_allocation"]["photo"]    -= Gl.delta_adapt/2    
+    elif Plant["transp_limit_pool"]== "support":
+        if Plant["ratio_allocation"]["support"] <= 0.8:
+            Plant["ratio_allocation"]["support"]  += Gl.delta_adapt
+            Plant["ratio_allocation"]["absorp"]   -= Gl.delta_adapt/2
+            Plant["ratio_allocation"]["photo"]    -= Gl.delta_adapt/2 
+    elif Plant["transp_limit_pool"]== "photo":
         #Plant["storage_fraction"]["sugar"] += Gl.delta_adapt
         if Plant["ratio_allocation"]["photo"] <= 0.8:
             Plant["ratio_allocation"]["support"] -= Gl.delta_adapt/2
             Plant["ratio_allocation"]["photo"]   += Gl.delta_adapt
             Plant["ratio_allocation"]["absorp"]  -= Gl.delta_adapt/2
-        #destroy_biomass(Plant, Env, "photo")
         adapt_leaf_structure(Plant, Env)
 
 
