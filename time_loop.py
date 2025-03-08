@@ -15,26 +15,65 @@ import history_def as Hi
 #############################
 #         MAIN LOOP         #
 #############################
-
+ 
 def run_simulation_collect_data(max_cycles):
     """
-    Lance la simulation en collectant à chaque cycle un ensemble
-    de variables dans 'history'.
+    Boucle principale de simulation, 
+    avec condition de germination si min nocturne > 10°C sur 7 jours.
     """
     global time
     cycle_count = 0
     time = 0  # réinitialisation
 
+    # Variables pour suivre la température minimale quotidienne
+    daily_min_temps = []
+    day_min_temp = float('inf')  # Pour stocker la T min courante de la journée
+    previous_day_index = 0       # Pour savoir quand on change de jour
     Pl.Plant["biomass"]['photo'] = Pl.Plant["biomass_total"] * Pl.Plant["ratio_allocation"]['photo']
     Pl.Plant["biomass"]['support'] = Pl.Plant["biomass_total"] * Pl.Plant["ratio_allocation"]['support']
     Pl.Plant["biomass"]['absorp'] = Pl.Plant["biomass_total"] * Pl.Plant["ratio_allocation"]['absorp']
 
-    # Boucle principale
     while Pl.Plant["alive"] and cycle_count < max_cycles:
         time += 1
         cycle_count += 1
 
-        # Réinit
+        # Calcul de l'heure locale (0..23)
+        hour_in_day = time % 24
+        day_index   = time // 24  # numéro du jour en cours
+
+        #print("day:", day_index)
+
+        # 1. Environnement 
+        Ev.update_environment(time, Ev.Environment)
+        # -- Mise à jour de la température minimale quotidienne --
+        # 1) Si on vient de changer de jour => on remet day_min_temp à inf
+        if day_index != previous_day_index:
+            day_min_temp = float('inf')
+            previous_day_index = day_index
+
+        # 2) Mettre à jour la valeur min au fur et à mesure
+        Ev.update_environment(time, Ev.Environment)
+        T_current = Ev.Environment["atmos"]["temperature"]
+        if T_current < day_min_temp:
+            day_min_temp = T_current
+
+        # 3) En fin de journée (e.g. hour_in_day == 23), on sauvegarde la T min du jour
+        if hour_in_day == 23:
+            daily_min_temps.append(day_min_temp)
+            # On ne garde que les 30 derniers jours par ex. pour éviter de gonfler la liste
+            if len(daily_min_temps) > 30:
+                daily_min_temps.pop(0)
+
+            # Vérifier si la plante est déjà germée
+            if not Pl.Plant["germinated"]:
+                # Si on a au moins 7 jours, vérifier si toutes > 10°C
+                if len(daily_min_temps) >= 7:
+                    last_7 = daily_min_temps[-7:]  # on prend les 7 dernières
+                    if all(t > 8.0 for t in last_7):
+                        Pl.Plant["germinated"] = True
+                        # Optionnel: print("Germination déclenchée le jour", day_index)
+
+
         Pl.Plant["diag"] = {}
         Pl.Plant["reserve_used"]  = {"maintenance": False, "reproduction": False}
         Pl.Plant["adjusted_used"] = {"maintenance": False, "extension": False, "reproduction": False}
@@ -51,9 +90,20 @@ def run_simulation_collect_data(max_cycles):
         Pl.Plant["stomatal_conductance"] = 1.0
         Pl.Plant["light_absorption_fraction"] = 0.7
 
-        # 1. Environnement 
-        Ev.update_environment(time, Ev.Environment)
-        Ev.co2_availability(time, Ev.Environment)
+        if not Pl.Plant["germinated"]:
+            # On met quand même à jour l’historique pour la température, etc.
+            # Mais la plante reste "en dormance" (skip photosynthèse, etc.)
+            Pl.Plant["diag"]["raw_sugar_flux"] = 0.0
+            Pl.Plant["diag"]["pot_sugar"] = 0.0  
+            Pl.Plant["diag"]["leaf_temperature_after"] = 0.0 
+            Pl.Plant["diag"]["atmos_temperature"] = T_current
+            Pl.Plant["diag"]["leaf_temperature_before"] = 0.0
+            Pl.Plant["diag"]["max_transpiration_capacity"] = 0.0
+            Pl.Plant["diag"]["sugar_photo"]  = 0.0
+            Pl.Plant["diag"]["water_after_transp"] = 0.0
+            Pl.Plant["diag"]["stomatal_conductance"] = 0.0
+            Hi.history_update(Pl.Plant, Hi.history, Ev.Environment, time)
+            continue
         #Ev.Environment_hazards(Pl.Plant, Ev.Environment)
 
         # 2. Calcul des coûts
@@ -64,14 +114,12 @@ def run_simulation_collect_data(max_cycles):
         if Ev.Environment["atmos"]["light"] > 0.0:
             Fu.calculate_cost(Pl.Plant, Ev.Environment, "extension")
             Fu.calculate_cost(Pl.Plant, Ev.Environment,"reproduction")
-
         # 3. Transpiration
         Fu.handle_process(Pl.Plant, Ev.Environment, "transpiration")
         Ev.Environment["soil"]["water"] -= Pl.Plant["trans_cooling"]
         Pl.Plant["diag"]["water_after_transp"] = Pl.Plant["flux_in"]["water"]
         Pl.Plant["diag"]["sugar_photo"]  = Pl.Plant["flux_in"]["sugar"]
         Pl.Plant["diag"]["stomatal_conductance"] = Pl.Plant["stomatal_conductance"]
-        #Pl.Plant["diag"]["light_absorption_fraction"] =Pl.Plant["light_absorption_fraction"]
 
         # 4. Assimilation
         Fu.nutrient_absorption(Pl.Plant, Ev.Environment)
@@ -82,7 +130,7 @@ def run_simulation_collect_data(max_cycles):
         # 6. Extension
         if Ev.Environment["atmos"]["light"] > 0.0:
             Fu.handle_process(Pl.Plant, Ev.Environment, "extension")
-            Fu.update_success_history(Pl.Plant, "extension")
+            Fu.update_success_history(Pl.Plant, "extension")  
 
         # 7. Reproduction
         if (Pl.Plant["biomass_total"] >= Pl.Plant["reproduction_biomass_thr"] and

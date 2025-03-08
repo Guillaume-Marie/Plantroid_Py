@@ -66,12 +66,12 @@ def photosynthesis(Plant, Env):
     On enregistre aussi des variables pour l'affichage détaillé.
     """
     # 1) fraction de la puissance lumineuse interceptée J/s/gleaf
-    power_absorbed = Env["atmos"]["light"] * 0.02 * Plant["slai"] \
+    power_absorbed = Env["atmos"]["light"] * Plant["sla_max"] * Plant["slai"] \
                      * Plant["light_absorption_fraction"]
     
     # Facteur limitant selon la température
     temp_diff = abs(Plant["temperature"]["photo"] - Plant["T_optim"])
-    temp_lim = max(0.0, 1.0 - 0.01 * temp_diff)
+    temp_lim = max(0.0, 1.0 - Plant["temp_photo_sensitivity"] * temp_diff)
 
     # flux initial gC6H12O6/s/gleaf
     C6H12O6_flux_pot = power_absorbed * Gl.conversion_factor * temp_lim 
@@ -86,11 +86,11 @@ def photosynthesis(Plant, Env):
     Plant["flux_in"]["sugar"] = C6H12O6_flux * Plant["biomass"]["photo"] * Gl.DT
 
     # On peut donc estimer la quantité de H2O utilisé pour formé les sucres
-    Plant["cost"]["transpiration"]["water"] = Plant["flux_in"]["sugar"] * 0.6
+    Plant["cost"]["transpiration"]["water"] = Plant["flux_in"]["sugar"] * Gl.RATIO_H2O_C6H12O6 
 
     # Sauvegarde des variables de diagnostic
-    Plant["diag"]["raw_sugar_flux"] = C6H12O6_flux_pot   # (gSugar/s par gFeuille, avant surface complète)
-    Plant["diag"]["pot_sugar"]      = C6H12O6_flux      # (gSugar/s, avant limitation température)
+    Plant["diag"]["raw_sugar_flux"] = power_absorbed * Gl.conversion_factor   # (gSugar/s par gFeuille, avant surface complète)
+    Plant["diag"]["pot_sugar"]      = C6H12O6_flux      # (gSugar/s, aprés limitation température)
 
 def nutrient_absorption(Plant, Env):
     """
@@ -99,18 +99,6 @@ def nutrient_absorption(Plant, Env):
     # Eau absorbée (déjà calculée dans flux_in["water"])
     # Nutriments absorbés proportionnellement
     Plant["flux_in"]["nutrient"] = Plant["flux_in"]["water"] * Plant["water_nutrient"]
-
-def estimate_WUE(Plant, Env):
-    """
-    Efficacité d'usage de l'eau (WUE) : ratio sucre produit / gramme d'eau
-    """ 
-    temp_diff = abs(Plant["temperature"]["photo"] - Plant["T_optim"]) / Plant["T_optim"]
-    penalty = (1.0 - temp_diff) * Plant["stomatal_conductance"]
-    if penalty < 0.33:
-        penalty = 0.33
-    if Plant["biomass"]["photo"] <= 0:
-        penalty = 0.33
-    return Gl.base_WUE * penalty
 
 def compute_root_explored_volume(Plant):
     """
@@ -162,7 +150,7 @@ def compute_max_transpiration_capacity(Plant, Env):
         "support": support_capacity,
         "soil": soil_capacity
     }
-
+    #print("limiting_pool:",min(capacities, key=capacities.get))
     # 3) Extraire la valeur minimale et la clé correspondante
     min_capacity = min(capacities.values())
     limiting_pool = min(capacities, key=capacities.get)
@@ -184,7 +172,7 @@ def find_transpiration_for_cooling(Plant, Env):
         return 0.0
 
     # calcul d'une puissance absorbée
-    power_absorbed = Env["atmos"]["light"] * 0.02 \
+    power_absorbed = Env["atmos"]["light"] * Plant["sla_max"] \
                         * Plant["slai"] * Plant["light_absorption_fraction"] \
                         * 0.5
     power_sensible = Gl.K * (T_leaf - T_air) # J/s
@@ -225,10 +213,10 @@ def adjust_stomatal_conductance(Plant, Env):
     #print("Ajust Gs cost:",Plant["flux_in"]["water"])
     #print("Ajust Gs cost:",Plant["cost"]["transpiration"]["water"])
     #print("delta:",delta)
-    while delta > 0.0 and Plant["stomatal_conductance"] != 0.01:  
+    while delta > 0.0 and Plant["stomatal_conductance"] != Plant["stomatal_conductance_min"]:  
         Plant["stomatal_conductance"] -= 0.001
-        if Plant["stomatal_conductance"] < 0.01:
-            Plant["stomatal_conductance"] = 0.01
+        if Plant["stomatal_conductance"] < Plant["stomatal_conductance_min"]:
+            Plant["stomatal_conductance"] = Plant["stomatal_conductance_min"]
         Plant["light_absorption_fraction"] -= 0.0005
         if Plant["light_absorption_fraction"] <= 0.01:
             Plant["light_absorption_fraction"] = 0.01
@@ -245,7 +233,7 @@ def adjust_leaf_temperature(Plant, Env):
     entre la puissance absorbée, l'évaporation et la convection.
     """
     #print("Ajust T cost:", Plant["trans_cooling"])
-    power_absorbed = Env["atmos"]["light"] * 0.02 *  \
+    power_absorbed = Env["atmos"]["light"] * Plant["sla_max"] *  \
                         Plant["slai"] * Plant["light_absorption_fraction"] * 0.5
     power_evap = (Plant["trans_cooling"] / max(Plant["biomass"]["photo"],1e-9) / \
                  Gl.DT) * Gl.LATENT_HEAT_VAPORIZATION
@@ -276,7 +264,7 @@ def adjust_leaf_temperature(Plant, Env):
 
     Plant["diag"]["leaf_temperature_after"] = T_leaf
     if Plant["temperature"]["photo"] > 45:
-        destroy_biomass(Plant, Env, "photo", 0.1)
+        destroy_biomass(Plant, Env, "photo", 0.01)
 
 
 ##############################################
@@ -299,8 +287,10 @@ def post_process_success(Plant, Env, process):
 def post_process_resist(Plant, Env, process):
     if process == "transpiration": 
         destroy_biomass(Plant, Env, "photo", 0.005)
+        pass
     elif process == "maintenance":
         destroy_biomass(Plant, Env, "support",0.005)
+        pass
     elif process == "extension":
         adjust_success_cycle(Plant, "extension")
         allocate_new_biomass(Plant)

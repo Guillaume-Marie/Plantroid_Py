@@ -2,68 +2,89 @@
 import matplotlib.pyplot as plt
 import time_loop as Ti
 import global_constants as Gl
-import copy
-import numpy as np
-import Plant_def as Pl
 
-def aggregate_day_night(history, points_per_day=24, day_hours=12):
+def aggregate_day_night(history, threshold_light=1.0):
     """
-    Agrège l'historique en deux blocs par jour :
-      - day_data : moyenne (ou somme) sur les 12 premières heures
-      - night_data : moyenne (ou somme) sur les 12 heures suivantes
+    Agrège l'historique en deux blocs (jour/nuit) pour chaque journée,
+    en se basant sur la luminosité atmosphérique.
+    
+    :param history: Dictionnaire avec les listes de variables 
+                    (incluant "time" et "atmos_light", etc.)
+    :param threshold_light: Valeur de luminosité au-dessus de laquelle 
+                            on considère qu'il fait jour (par exemple 1.0)
+    :return: day_data, night_data 
+         - day_data["time"] = [1, 2, 3, ...]
+         - day_data["biomass_total"] = [moyenne du jour 1, ...]
+         - etc.
+    """
 
-    :param history: Dictionnaire 'history' avec les listes de variables
-    :param points_per_day: 24 si 1 cycle = 1h -> 24 points par jour
-    :param day_hours: 12 => on considère les 12 premiers points comme "jour"
-    :return: day_data, night_data (deux dictionnaires avec moyennes)
-    """
+    # 1) Prépare deux structures identiques à l’historique 
+    #    pour stocker les agrégats jour/nuit.
     day_data = {}
     night_data = {}
 
-    # On initialise les clés :
-    for key in history.keys():
-        day_data[key] = []
-        night_data[key] = []
-
+    # Si l’historique est vide, on renvoie directement deux dict vides
     total_points = len(history["time"])
-    # Nombre de jours complets qu’on peut agréger
-    num_days = total_points // points_per_day
+    if total_points == 0:
+        return day_data, night_data
 
-    for day_idx in range(num_days):
-        start = day_idx * points_per_day
-        # Intervalle jour
-        day_start = start
-        day_end   = start + day_hours
-        # Intervalle nuit
-        night_start = day_end
-        night_end   = start + points_per_day
+    # 2) Détermine le nombre total de jours simulés
+    #    Sachant que time[i] est en heures simulées
+    max_time = max(history["time"])
+    total_days = (max_time // 24) + 1  # ex. si max_time=47 => total_days=2
 
+    # 3) Initialise pour chaque clé de l’history, 
+    #    une liste de longueur = total_days, dans laquelle on accumule.
+    #    On va d’abord accumuler des sommes, puis on divisera par le nb de points.
+    for key in history:
+        # On crée des listes vides ou à 0 pour chaque jour
+        day_data[key] = [0.0] * total_days
+        night_data[key] = [0.0] * total_days
+
+    # Compteurs jour/nuit (combien d’heures dans le jour / nuit)
+    day_counts = [0] * total_days
+    night_counts = [0] * total_days
+
+    # 4) Boucle sur tous les points
+    for i in range(total_points):
+        t = history["time"][i]
+        # jour_index = (ex. t=0..23 => jour_index=0, t=24..47 => jour_index=1)
+        day_index = t // 24
+
+        # Vérifie si c’est “jour” ou “nuit”
+        # On utilise la luminosité AtmosLight
+        atm_light = history["atmos_light"][i]
+        is_day = (atm_light > threshold_light)
+
+        # Ajoute la valeur de chaque variable dans la liste correspondante
         for key, values in history.items():
-            # Récupère les segments correspondants
-            chunk_day   = values[day_start:day_end]
-            chunk_night = values[night_start:night_end]
-
-            # Moyenne sur la tranche jour
-            if len(chunk_day) > 0:
-                day_avg = sum(chunk_day) / len(chunk_day)
+            val = values[i]
+            if is_day:
+                day_data[key][day_index] += val
             else:
-                day_avg = 0.0
+                night_data[key][day_index] += val
 
-            # Moyenne sur la tranche nuit
-            if len(chunk_night) > 0:
-                night_avg = sum(chunk_night) / len(chunk_night)
-            else:
-                night_avg = 0.0
+        # On incrémente le compteur
+        if is_day:
+            day_counts[day_index] += 1
+        else:
+            night_counts[day_index] += 1
 
-            day_data[key].append(day_avg)
-            night_data[key].append(night_avg)
+    # 5) Moyennage final
+    #    Pour chaque jour, on divise la somme par le nombre de points journaliers/nuit
+    for key in history:
+        for d in range(total_days):
+            if day_counts[d] > 0:
+                day_data[key][d] /= day_counts[d]
+            if night_counts[d] > 0:
+                night_data[key][d] /= night_counts[d]
 
-    # Pour la variable "time", on remplace par un simple [1..num_days]
-    # afin de tracer sur l’échelle du nombre de jours.
-    day_data["time"]   = list(range(1, num_days + 1))
-    night_data["time"] = list(range(1, num_days + 1))
+    # 6) On remplace la liste time par une échelle de jours [1..total_days]
+    day_data["time"] = list(range(1, total_days + 1))
+    night_data["time"] = list(range(1, total_days + 1))
 
     return day_data, night_data
+
 
 
 def simulate_and_plot():
@@ -72,7 +93,7 @@ def simulate_and_plot():
     et produit divers graphiques (y compris météo, reserve_used, etc.).
     """
     data, final_Plant, final_env = Ti.run_simulation_collect_data(Gl.max_cycles)
-    day_data, night_data = aggregate_day_night(data, points_per_day=24, day_hours=12)
+    day_data, night_data = aggregate_day_night(data)
 
     day_fig, day_axes = plt.subplots(nrows=4, ncols=4, figsize=(65, 35))
     day_fig.suptitle("", fontsize=16)
@@ -305,10 +326,10 @@ def simulate_and_plot():
     night_axes[4,0].set_title("Détails Transpiration")
     night_axes[4,0].legend()
 
-    night_axes[4,1].plot(night_data["time"], night_data["raw_sugar_flux"], label="Flux brut (g/s*gFeuille)")
-    night_axes[4,1].plot(night_data["time"], night_data["pot_sugar"], label="Pot. (g/s, avant T_lim)")
+    night_axes[4,1].plot(night_data["time"], night_data["raw_sugar_flux"], label="Flux brut")
+    night_axes[4,1].plot(night_data["time"], night_data["pot_sugar"], label="Net after g/s, T_lim")
     night_axes[4,1].set_xlabel("Jour")
-    night_axes[4,1].set_ylabel("Valeurs calculées")
+    night_axes[4,1].set_ylabel("gC6H12O6/gleaf/s")
     night_axes[4,1].set_title("Détails Photosynthèse")
     night_axes[4,1].legend()
     night_axes[4,2].axis("off")

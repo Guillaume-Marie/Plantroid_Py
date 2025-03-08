@@ -9,49 +9,141 @@ Environment = {
     "atmos":   {"Co2": 1000.0, "light": 1000.0, "water": 100.0, "temperature": 25.0}
 }
 
-
 #######################################
 #    FONCTIONS SUR L'ENVIRONNEMENT    #
 #######################################
-
 def update_environment(time, Env):
     """
-    Met à jour l'environnement en fonction de l'heure (en secondes).
-    Exemple:
-      - On fait varier la lumière de façon sinusoïdale entre 0 et un max.
-      - On fait varier la température entre 15°C la nuit et 25°C le jour.
+    Met à jour l'environnement en fonction de l'heure (time), en intégrant :
+      - Un cycle annuel de 365 jours (saisons).
+      - Un cycle journalier (jour/nuit).
+      - Une variabilité aléatoire (météo).
+    Hypothèses simplifiées pour un climat tempéré d'Europe centrale.
+    
+    Paramètres ajustables :
+    -----------------------
+    - day_temp_amplitude  : amplitude moyenne de température jour/nuit (ex. +/- 5°C)
+    - seasonal_temp_offset: amplitude saisonnière de la température moyenne (ex. +/- 10°C)
+    - base_temp           : température moyenne annuelle (ex. 10°C)
+    - base_light          : luminosité maximale (W/m² ou un équivalent) en été, par beau temps
+    - seasonal_light_var  : variation saisonnière de la luminosité (rapport entre hiver et été)
+    - precipitation_base  : précipitation moyenne (ex. 3 mm par jour)
+    - seasonal_rain_var   : variation saisonnière des précipitations (ex. +50% au printemps)
+    - random_factor       : facteur d’aléa météo pour pluie ou luminosité
     """
 
-    # cycle jour/nuit sur 24h
-    day_length = 12   # 12h en secondes
-    t_in_day   = time % 24
+    # -------------------------
+    # 1) Paramètres de base
+    # -------------------------
+    day_temp_amplitude   = 5.0    # amplitude (°C) de la variation jour/nuit
+    seasonal_temp_offset = 10.0   # amplitude (°C) de la variation saisonnière
+    base_temp            = 10.0   # température moyenne annuelle (°C)
 
-    # Lumière : sinusoïde simplifiée entre 0 et 1, qu’on multiplie par un max (ex. 800 W/g)
-    # On suppose qu'il y a 12h de jour, 12h de nuit
-    mod=random.random()
-    if t_in_day < day_length:
-        # fraction du jour
-        frac_day = t_in_day / float(day_length)
-        # sinus qui démarre à 0, culmine au milieu du jour
-        Env["atmos"]["light"] = max(600.0,mod*1500.0) * max(0.0, math.sin(math.pi * frac_day))
-        # Température : passe de 15°C le matin à 25°C en milieu de journée
-        Env["atmos"]["temperature"] = 15.0 + (mod*15.0) * frac_day
+    base_light           = 800.0 # luminosité max (p. ex. W/m²) en plein été
+    seasonal_light_var   = 0.5    # en hiver, la luminosité max ~ base_light * (1 - seasonal_light_var)
+
+    precipitation_base   = 3.0    # mm (ou g eau/m²) par jour, en moyenne
+    seasonal_rain_var    = 0.5    # +/- 50% selon la saison
+    random_factor        = 0.3    # intensité du facteur aléatoire (30%)
+
+    # -------------------------
+    # 2) Conversion du temps
+    # -------------------------
+    # On suppose que 'time' est un compteur d’heures.
+    # -> On calcule le jour absolu et l’heure dans la journée.
+    day_index  = time // 24             # indice du jour
+    hour_in_day = time % 24             # heure locale dans la journée
+    day_of_year = day_index % 365       # position dans l’année (0..364)
+
+    # -------------------------
+    # 3) Cycle saisonnier
+    # -------------------------
+    # On fait varier la température moyenne T_season en fonction d’un sinus,
+    # avec un pic ~ jour 173 (22 juin dans l’hémisphère nord).
+    # Formule indicative :
+    #  T_season = base_temp + seasonal_temp_offset * sin( 2π*(day_of_year - 81)/365 )
+    # (Le décalage de ~81 jours rapproche le pic de la fin juin.)
+    seasonal_angle = 2.0 * math.pi * (day_of_year - 81) / 365.0
+    T_season = base_temp + seasonal_temp_offset * math.sin(seasonal_angle)
+
+    # De même pour la luminosité maximale journalière 
+    # (on suppose plus de lumière l’été et moins l’hiver).
+    # Par exemple, en hiver : luminosité max = base_light * (1 - seasonal_light_var)
+    # en été : ~ base_light * (1 + seasonal_light_var)
+    light_season_factor = 1.0 + seasonal_light_var * math.sin(seasonal_angle)
+    # coefficient multiplicateur de la lumière journalière
+    # oscillant entre (1 - seasonal_light_var) et (1 + seasonal_light_var).
+    # On clamp si besoin pour éviter d’être < 0.
+    if light_season_factor < 0:
+        light_season_factor = 0
+
+    # Même logique pour la pluie : 
+    # précipitations plus fortes au printemps/automne, plus faibles en été/hiver
+    # (ça dépend des régions, on adapte ci-dessous un sinus simple).
+    precipitation_season_factor = 1.0 + seasonal_rain_var * math.sin(seasonal_angle)
+
+    # -------------------------
+    # 4) Cycle journalier
+    # -------------------------
+    # On fait une variation sinusoïdale de la température dans la journée
+    # autour de T_season : T_jour = T_season + day_temp_amplitude*sin(π * (heure/12 - 0.5))
+    # De sorte que la température est minimale vers 5-6h du matin et max vers 14-15h.
+    
+    # (Pour rester simple, on prend un pic au milieu de la journée de 12h – c’est perfectible)
+    daily_angle = math.pi * (hour_in_day / 12.0 - 0.5)
+    T_daily = T_season + day_temp_amplitude * math.sin(daily_angle)
+
+    # Lumière : on considère 12-16h de jour l’été, 8-10h de jour l’hiver, etc.
+    # Pour simplifier, on fait :
+    #    - Jour : 6h -> 20h -> sin pour le lever/coucher
+    #    - Nuit : 20h -> 6h (luminosité = 0)
+    # Ex.: on modélise la luminosité instantanée par un sin(π*(h-6)/14) si 6 <= h < 20
+    # On la multiplie par la factor saisonnier + un aléa.
+    if 6 <= hour_in_day < 20:
+        frac_daytime = (hour_in_day - 6) / 14.0  # de 0..1 entre 6h et 20h
+        light_day = base_light * light_season_factor * max(0.0, math.sin(math.pi * frac_daytime))
     else:
-        Env["atmos"]["light"] = 0.0
-        # la nuit, on redescend de 25°C à 15°C
-        frac_night = (t_in_day - day_length) / float(day_length)
-        Env["atmos"]["temperature"] = 15.0 - mod*8.0 * frac_night
+        light_day = 0.0
 
-    """
-    Met à jour l'environnement en fonction de l'heure (en cycles).
-    """
-    # ... (pas de changement pour la lumière/ température)...
+    # -------------------------
+    # 5) Pluie
+    # -------------------------
+    # On distribue la pluie moyenne journalière (en g eau par m² ou en mm)
+    # de manière aléatoire. Par exemple, on décide à chaque jour s’il pleut 
+    # et combien. On peut le faire une seule fois par jour_index ou
+    # l’étaler aléatoirement sur la journée. 
+    # Exemple minimaliste : événement de pluie aléatoire à 6h du matin.
+    
+    if hour_in_day == 6:
+        # pluie journalière moyenne
+        daily_rain_mean = precipitation_base * precipitation_season_factor
+        # aléa multiplicatif
+        daily_rain = daily_rain_mean * (1.0 + random_factor * (2.0*random.random() - 1.0))
+        # on ajoute la pluie dans le sol (grand réservoir) 
+        # Conversion mm -> g eau... c’est arbitraire, on peut rester cohérent
+        Env["soil"]["water"] += daily_rain * 1000.0  # x1000 si 1 mm = 1 L/m² ...
+        Env["rain_event"] = daily_rain * 1000.0
+    else:
+        # Pas de pluie à cette heure
+        Env["rain_event"] = 0.0
 
-    # Gérer la pluie comme un événement explicite
-    Env["rain_event"] = 0.0
-    if time % 100 == 0:
-        Env["soil"]["water"] += 50000.0
-        Env["rain_event"] = 50000.0
+    # -------------------------
+    # 6) Ajout d’un facteur aléatoire
+    # -------------------------
+    # On peut ajouter un bruit sur la température, la lumière...
+    rand_temp = 1.0 + random_factor * (2.0*random.random() - 1.0)
+    rand_light = 1.0 + 0.2 * random_factor * (2.0*random.random() - 1.0)  # plus faible
+    T_final = T_daily * rand_temp
+    light_final = light_day * rand_light
+
+    # -------------------------
+    # 7) Mise à jour de Env
+    # -------------------------
+    Env["atmos"]["temperature"] = T_final
+    Env["atmos"]["light"]       = max(0.0, light_final)  # évite toute valeur négative
+    # On garde la logique existante pour le CO2 :
+    co2_availability(time, Env)
+
 
 def co2_availability(time, Env):
     """

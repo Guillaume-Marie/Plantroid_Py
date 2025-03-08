@@ -4,7 +4,7 @@
 
 # Variables et constantes globales :
 time = 0  # temps (unité discrète)
-max_cycles = 24*230
+max_cycles = 24*400
 DT = 3600 # pas de temps en secondes
 delta_adapt = 0.01/72
 N = 10
@@ -14,11 +14,11 @@ total_soil_volume = 1e7 # cm³ (hypothèse : 10 m³ de sol total dans l'environn
 # Conversion lumière -> sucres.
 # Voir explication dans le commentaire ci-dessus.
 conversion_factor = 0.000001  # J/s ---> gC6H12O6/s
-base_WUE = 0.006 # gsugar/gH2O
 k_root = 100 # cm³ de sol exploré par gramme de racine (à ajuster selon le type de sol)
 # Constantes utiles
 LATENT_HEAT_VAPORIZATION = 2450   # J par g d'eau (approx. ~ 2450 J/g)
 SPECIFIC_HEAT_LEAF       = 2.2    # J / (g·°C), chaleur massique feuilles
+RATIO_H2O_C6H12O6        = 0.6    # ratio de H2O utilisé pour formé un sucres
 K = 0.1  # W/°C par gFeuille (exemple)
 
 # Catégories de biomasse

@@ -2,13 +2,16 @@
 # Plante initiale
 Plant = {
     "T_optim":                     25.0, 
-    "r_max":                       0.00693, # 0.00533
-    "alpha":                       0.000383,
+    "r_max":                       0.006602, # 0.00533
+    "alpha":                       0.000893,
     "reproduction_biomass_thr":    5000.0,
     "reproduction_health_thr":     50.0,
-    "light_absorption_fraction":   0.59332,
-    "root_absorption_coefficient": 0.002894,
-    "transpiration_coefficient":   0.009354,
+    "temp_photo_sensitivity":      0.02,
+    "sla_max":                     0.02,
+    "stomatal_conductance_min":    0.01,
+    "light_absorption_fraction":   0.635506,
+    "root_absorption_coefficient": 0.003216,
+    "transpiration_coefficient":   0.009206,
     "support_transport_coefficient": 200.0,
     "soil_supply_coefficient":     0.1,
     "water_nutrient":              0.003,
@@ -44,6 +47,7 @@ Plant = {
     "transp_limit_pool" : "none",
     "health_state": 100.0,
     "alive": True,
+    "germinated": False,
     "reserve_used":  {"maintenance": False, "reproduction": False},
     "adjusted_used": {"maintenance": False, "extension": False, "reproduction": False},
     "stress_history": {"sugar": [], "water": [], "nutrient": []},

@@ -1,12 +1,12 @@
 import copy
 import random
-import math
 
 import time_loop as Ti
 import Plant_def as Pl
 import Environnement_def as Ev
 import history_def as Hi
 import global_constants as Gl
+import run_and_plot as Rp
 
 def ga_multi_criteria_optimization(
     population_size=20,
@@ -71,10 +71,8 @@ def ga_multi_criteria_optimization(
     def evaluate(individual):
         """
         Lance la simulation, puis calcule un score agrégé.
-        - Pénalise (score=0) si constraints non satisfaites
-        - Sinon calcule la fitness = alpha_biomass * B_final
-                                    + alpha_sugar   * sugar_final
-                                    + alpha_stability * stability_score
+        On applique une pénalité si les contraintes ne sont pas satisfaites,
+        au lieu de mettre la fitness à 0.
         """
         # Copie la plante et l’environnement initiaux
         plant_copy = copy.deepcopy(Pl.Plant)
@@ -87,13 +85,14 @@ def ga_multi_criteria_optimization(
         plant_copy["root_absorption_coefficient"] = individual["root_absorption_coefficient"]
         plant_copy["transpiration_coefficient"] = individual["transpiration_coefficient"]
 
-        # On sauvegarde l’état global avant
+        # Sauvegarde l’état global
         original_plant = Pl.Plant
-        original_env = Ev.Environment
+        original_env   = Ev.Environment
 
         # Remplace globalement
-        Pl.Plant = plant_copy
+        Pl.Plant       = plant_copy
         Ev.Environment = env_copy
+
         # Réinitialise l’historique
         for k in Hi.history:
             Hi.history[k].clear()
@@ -102,32 +101,52 @@ def ga_multi_criteria_optimization(
         data, final_plant, final_env = Ti.run_simulation_collect_data(Gl.max_cycles)
 
         # Restaure
-        Pl.Plant = original_plant
+        Pl.Plant       = original_plant
         Ev.Environment = original_env
 
         # Récupération des données d’intérêt
-        B_final = final_plant["biomass_total"]
-        sugar_final = final_plant["reserve"]["sugar"]
-        # fraction de sucre
-        fraction_sucre = 0.0
-        if B_final > 1e-9:
-            fraction_sucre = sugar_final / B_final
-        
-        # Vérifie les contraintes
-        if not (B_min <= B_final <= B_max):
-            return 0.0  # violation -> fitness nulle
-        if not (sugar_frac_min <= fraction_sucre <= sugar_frac_max):
-            return 0.0  # violation -> fitness nulle
+        B_final      = final_plant["biomass_total"]
+        sugar_final  = final_plant["reserve"]["sugar"]
+        fraction_sucre = sugar_final / B_final if B_final > 1e-9 else 0.0
 
-        # Calcul de la "stabilité" sur les derniers cycles
+        # -------------------------
+        # 1) Score de base
+        # -------------------------
+        # Exemple : on garde l’existant
         stability_score = compute_stability_score(Hi.history, last_n=10)
+        scoreBase = (alpha_biomass * B_final
+                    + alpha_sugar   * sugar_final
+                    + alpha_stability * stability_score)
 
-        # Score agrégé
-        score = (alpha_biomass * B_final
-                 + alpha_sugar   * sugar_final
-                 + alpha_stability * stability_score)
+        # -------------------------
+        # 2) Calcul de la pénalité
+        # -------------------------
+        penalty = 0.0
 
-        return score
+        # Pénalité sur la biomasse hors de [B_min..B_max]
+        if B_final < B_min:
+            penalty += (B_min - B_final) ** 2
+        elif B_final > B_max:
+            penalty += (B_final - B_max) ** 2
+
+        # Pénalité sur la fraction de sucre hors de [sugar_frac_min..sugar_frac_max]
+        if fraction_sucre < sugar_frac_min:
+            penalty += (sugar_frac_min - fraction_sucre) ** 2
+        elif fraction_sucre > sugar_frac_max:
+            penalty += (fraction_sucre - sugar_frac_max) ** 2
+
+        # Vous pouvez ajouter d'autres pénalités sur d’autres variables 
+        # (santé trop basse, mortalité, etc.)
+
+        # -------------------------
+        # 3) Fitness finale
+        # -------------------------
+        # Méthode 1 : on divise le score par (1 + penalty)
+        if scoreBase < 0:
+            scoreBase = 0.0
+        fitness = scoreBase / (1.0 + penalty)
+
+        return fitness
 
     # ----------------------------------------------------------------
     # 4) Calcul de la stabilité (pente finale)
@@ -262,6 +281,7 @@ def ga_multi_criteria_optimization(
     print("==============================================")
 
     return best_solution, best_fitness
+
 if __name__ == "__main__":
     best_config, best_score = ga_multi_criteria_optimization(
         population_size=20,
@@ -271,9 +291,9 @@ if __name__ == "__main__":
         elite_size=2,
         B_min=2.0,
         B_max=4.0,
-        sugar_frac_min=0.2,
-        sugar_frac_max=0.7,
+        sugar_frac_min=0.4,
+        sugar_frac_max=1.0,
         alpha_biomass=1.0,
-        alpha_sugar=0.1,
-        alpha_stability=0.4
-    )
+        alpha_sugar=0.5,
+        alpha_stability=0.5
+    )    
