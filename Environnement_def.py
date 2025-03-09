@@ -153,6 +153,44 @@ def co2_availability(time, Env):
     fluctuation = 10.0 * math.sin(time / 10.0)
     Env["atmos"]["Co2"] = base_co2 + fluctuation
 
+def calc_daily_photoperiod(day_of_year):
+    """
+    Calcule la durée du jour (photopériode) en heures pour un 'day_of_year' (0..364)
+    à l'aide d'une variation sinusoïdale simple.
+    
+    Hypothèses :
+    ------------
+    - Amplitude d'environ +/- 4 heures autour de 12h.
+      => la longueur du jour varie approximativement de 8h (en plein hiver) à 16h (en été).
+    - Pic de la sinusoïde autour du jour 173 (22 juin Hémisphère Nord).
+      => On décale le sinus de ~81 jours pour aligner le maximum sur fin juin.
+    - On borne la valeur obtenue dans l’intervalle [0..24], pour éviter les anomalies.
+
+    Paramètres :
+    ------------
+    day_of_year : int
+        Numéro du jour dans l'année, entre 0 et 364 (ex. 0 = 1er janvier).
+
+    Retour :
+    --------
+    float
+        Nombre d'heures de lumière pour ce jour (photopériode).
+    """
+    # Position saisonnière (en radians).
+    seasonal_angle = 2.0 * math.pi * (day_of_year - 81) / 365.0
+
+    # Base : 12h de lumière de moyenne annuelle
+    base_hours = 12.0
+
+    # Amplitude : +/- 4h autour de 12, ici on ajuste selon le climat/latitude visée
+    amplitude = 4.0  
+
+    # Photopériode théorique
+    day_length = base_hours + amplitude * math.sin(seasonal_angle)
+
+    # Pour éviter d’avoir moins de 0 ou plus de 24
+    day_length = max(0.0, min(24.0, day_length))
+    return day_length
 
 def environment_hazards(Plant, Env):
     """

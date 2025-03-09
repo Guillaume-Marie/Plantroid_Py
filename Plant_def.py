@@ -1,21 +1,20 @@
+import global_constants as Gl
 
 # Plante initiale
 Plant = {
     "T_optim":                     25.0, 
-    "r_max":                       0.006602, # 0.00533
-    "alpha":                       0.000893,
-    "reproduction_biomass_thr":    5000.0,
-    "reproduction_health_thr":     50.0,
+    "r_max":                       0.009783, # 0.00533
+    "alpha":                       0.000813,
     "temp_photo_sensitivity":      0.02,
     "sla_max":                     0.02,
     "stomatal_conductance_min":    0.01,
-    "light_absorption_fraction":   0.635506,
-    "root_absorption_coefficient": 0.003216,
-    "transpiration_coefficient":   0.009206,
-    "support_transport_coefficient": 200.0,
-    "soil_supply_coefficient":     0.1,
-    "water_nutrient":              0.003,
-    "conduction_coeff":            0.001,
+    "light_absorption_max":        0.3131,
+    "watt_to_sugar_coeff":         0.000001,  # J/s ---> gC6H12O6/s
+    "transpiration_coeff":         0.00115,
+    "support_transport_coeff":     200.0,
+    "soil_supply_coeff":           0.1,
+    "water_nutrient_coeff":        0.003,
+    "dessication_rate":            Gl.delta_adapt, 
     "cost_params": {
         "extension": {
             "photo":    {"sugar": 0.5,  "water": 0.75, "nutrient": 0.0},
@@ -23,15 +22,16 @@ Plant = {
             "support":  {"sugar": 0.5,  "water": 0.75, "nutrient": 0.0}
         },
         "reproduction": {
-            "unique":   {"sugar": 0.5,  "water": 0.75, "nutrient": 0.0}
+            "unique":   {"sugar": 0.5,  "water": 0.25, "nutrient": 0.0}
         },
         "maintenance": {
             "unique":   {"sugar": 0.0000005, "water": 0.0, "nutrient": 0.0}
         }
     },
     "storage_fraction": {"sugar": 0.05, "water": 0.05, "nutrient": 0.05},
-    "ratio_allocation": {"support": 0.05, "absorp": 0.15, "photo": 0.8},
+    "ratio_allocation": {"support": 0.05, "absorp": 0.15, "photo": 0.8, "repro": 0.0},
     "stomatal_conductance": 1.0,
+    "light_absorption_coeff": 0.0,
     "trans_cooling" : 0.0,
     "temperature": {"photo": 10.0},
     "slai": 1.0,
@@ -57,8 +57,10 @@ Plant = {
     "biomass_total": 0.01,
     "new_biomass": 0.0,
     "biomass": {"support": 0, 
-                "photo": 0, 
-                "absorp": 0},
+                "photo":   0, 
+                "absorp":  0,        
+                "repro":   0,  
+                "necromass": 0},
     "dying_state_count": 0,
     "diag": {}  # pour stocker nos valeurs de diagnostic
 }

@@ -18,10 +18,13 @@ def ga_multi_criteria_optimization(
     B_min=1.0,
     B_max=4.0,
     # Plage fraction sucre
-    sugar_frac_min=0.4,
-    sugar_frac_max=0.6,
+    BT_min=0.4,
+    BT_max=0.6,
+    BL_min=0.0,
+    BL_max=0.1,   
     # Pondérations
     alpha_biomass=1.0,
+    alpha_leaving=1.0,
     alpha_sugar=1.0,
     alpha_stability=1.0
 ):
@@ -33,11 +36,11 @@ def ga_multi_criteria_optimization(
             + alpha_stability * stability_score
     avec:
       - Contrainte: B_min <= B_final <= B_max
-      - Contrainte: fraction_sucre ∈ [sugar_frac_min..sugar_frac_max]
+      - Contrainte: fraction_sucre ∈ [reprod_frac_min..reprod_frac_max]
       - stability_score: lié à la pente finale (plus la pente est proche de 0, mieux c'est).
     
     Paramètres à optimiser:
-      "r_max", "alpha", "light_absorption_fraction",
+      "r_max", "alpha", "dessication_rate",
       "root_absorption_coefficient", "transpiration_coefficient"
 
     Paramètres GA:
@@ -49,9 +52,8 @@ def ga_multi_criteria_optimization(
     param_bounds = {
         "r_max": (0.001, 0.01),
         "alpha": (0.0001, 0.001),
-        "light_absorption_fraction": (0.5, 0.9),
-        "root_absorption_coefficient": (0.001, 0.01),
-        "transpiration_coefficient": (0.001, 0.01)
+        "light_absorption_max": (0.3, 1.0),
+        "transpiration_coefficient": (0.0001, 0.005)
     }
     param_names = list(param_bounds.keys())
 
@@ -81,8 +83,7 @@ def ga_multi_criteria_optimization(
         # Applique les paramètres
         plant_copy["r_max"] = individual["r_max"]
         plant_copy["alpha"] = individual["alpha"]
-        plant_copy["light_absorption_fraction"] = individual["light_absorption_fraction"]
-        plant_copy["root_absorption_coefficient"] = individual["root_absorption_coefficient"]
+        plant_copy["light_absorption_max"] = individual["light_absorption_max"]
         plant_copy["transpiration_coefficient"] = individual["transpiration_coefficient"]
 
         # Sauvegarde l’état global
@@ -105,9 +106,9 @@ def ga_multi_criteria_optimization(
         Ev.Environment = original_env
 
         # Récupération des données d’intérêt
-        B_final      = final_plant["biomass_total"]
-        sugar_final  = final_plant["reserve"]["sugar"]
-        fraction_sucre = sugar_final / B_final if B_final > 1e-9 else 0.0
+        B_final   = final_plant["biomass"]["repro"]
+        BT_final  = final_plant["biomass"]["necromass"]
+        BL_final  = final_plant["biomass_total"]
 
         # -------------------------
         # 1) Score de base
@@ -115,7 +116,8 @@ def ga_multi_criteria_optimization(
         # Exemple : on garde l’existant
         stability_score = compute_stability_score(Hi.history, last_n=10)
         scoreBase = (alpha_biomass * B_final
-                    + alpha_sugar   * sugar_final
+                    + alpha_sugar   * BT_final
+                    + alpha_leaving   * BL_final
                     + alpha_stability * stability_score)
 
         # -------------------------
@@ -129,12 +131,17 @@ def ga_multi_criteria_optimization(
         elif B_final > B_max:
             penalty += (B_final - B_max) ** 2
 
-        # Pénalité sur la fraction de sucre hors de [sugar_frac_min..sugar_frac_max]
-        if fraction_sucre < sugar_frac_min:
-            penalty += (sugar_frac_min - fraction_sucre) ** 2
-        elif fraction_sucre > sugar_frac_max:
-            penalty += (fraction_sucre - sugar_frac_max) ** 2
+        # Pénalité sur la fraction de sucre hors de [reprod_frac_min..reprod_frac_max]
+        if BT_final < BT_min:
+            penalty += (BT_min - BT_final) ** 2
+        elif BT_final > BT_max:
+            penalty += (BT_final - BT_max) ** 2
 
+        # Pénalité sur la fraction de sucre hors de [reprod_frac_min..reprod_frac_max]
+        if BL_final < BL_min:
+            penalty += (BL_min - BL_final) ** 2
+        elif BL_final > BL_max:
+            penalty += (BL_final - BL_max) ** 2
         # Vous pouvez ajouter d'autres pénalités sur d’autres variables 
         # (santé trop basse, mortalité, etc.)
 
@@ -158,8 +165,8 @@ def ga_multi_criteria_optimization(
         Plus la pente est faible, plus le score est élevé.
         """
         # Récupère la liste des biomasses
-        B_list = history["biomass_total"][-last_n:]
-        S_list = history["reserve_sugar"][-last_n:]
+        B_list = history["biomass_repro"][-last_n:]
+        S_list = history["biomass_necromass"][-last_n:]
 
         # Si on n’a pas assez de points, on renvoie un score neutre
         if len(B_list) < 2 or len(S_list) < 2:
@@ -285,15 +292,19 @@ def ga_multi_criteria_optimization(
 if __name__ == "__main__":
     best_config, best_score = ga_multi_criteria_optimization(
         population_size=20,
-        generations=10,
+        generations=20,
         crossover_rate=0.7,
         mutation_rate=0.1,
         elite_size=2,
         B_min=2.0,
-        B_max=4.0,
-        sugar_frac_min=0.4,
-        sugar_frac_max=1.0,
+        B_max=3.0,
+        BT_min=4.0,
+        BT_max=6.0,
+        BL_min=0.0,
+        BL_max=0.1,
         alpha_biomass=1.0,
-        alpha_sugar=0.5,
-        alpha_stability=0.5
-    )    
+        alpha_leaving=1.0,
+        alpha_sugar=1.0,
+        alpha_stability=0.0
+    )
+    Rp.simulate_and_plot()  

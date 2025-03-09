@@ -24,6 +24,8 @@ def run_simulation_collect_data(max_cycles):
     global time
     cycle_count = 0
     time = 0  # réinitialisation
+    time_for_reproduction = False
+    time_for_dessication = False
 
     # Variables pour suivre la température minimale quotidienne
     daily_min_temps = []
@@ -32,7 +34,8 @@ def run_simulation_collect_data(max_cycles):
     Pl.Plant["biomass"]['photo'] = Pl.Plant["biomass_total"] * Pl.Plant["ratio_allocation"]['photo']
     Pl.Plant["biomass"]['support'] = Pl.Plant["biomass_total"] * Pl.Plant["ratio_allocation"]['support']
     Pl.Plant["biomass"]['absorp'] = Pl.Plant["biomass_total"] * Pl.Plant["ratio_allocation"]['absorp']
-
+    Pl.Plant["biomass"]['repro'] = Pl.Plant["biomass_total"] * Pl.Plant["ratio_allocation"]['repro']
+    
     while Pl.Plant["alive"] and cycle_count < max_cycles:
         time += 1
         cycle_count += 1
@@ -67,9 +70,9 @@ def run_simulation_collect_data(max_cycles):
             # Vérifier si la plante est déjà germée
             if not Pl.Plant["germinated"]:
                 # Si on a au moins 7 jours, vérifier si toutes > 10°C
-                if len(daily_min_temps) >= 7:
-                    last_7 = daily_min_temps[-7:]  # on prend les 7 dernières
-                    if all(t > 8.0 for t in last_7):
+                if len(daily_min_temps) >= 3:
+                    last_7 = daily_min_temps[-3:]  # on prend les 7 dernières
+                    if all(t > 3.0 for t in last_7):
                         Pl.Plant["germinated"] = True
                         # Optionnel: print("Germination déclenchée le jour", day_index)
 
@@ -87,8 +90,7 @@ def run_simulation_collect_data(max_cycles):
         Pl.Plant["flux_in"] =  {"sugar": 0.0, "water": 0.0, "nutrient": 0.0}
         Pl.Plant["new_biomass"] = 0
         Pl.Plant["total_water_needed"] = 0
-        Pl.Plant["stomatal_conductance"] = 1.0
-        Pl.Plant["light_absorption_fraction"] = 0.7
+        Pl.Plant["light_absorption_coeff"] = Pl.Plant["light_absorption_max"]
 
         if not Pl.Plant["germinated"]:
             # On met quand même à jour l’historique pour la température, etc.
@@ -106,6 +108,16 @@ def run_simulation_collect_data(max_cycles):
             continue
         #Ev.Environment_hazards(Pl.Plant, Ev.Environment)
 
+        #print("photoperiod : ",Ev.calc_daily_photoperiod(day_index))
+        if (Ev.calc_daily_photoperiod(day_index) < Ev.calc_daily_photoperiod(day_index-1) or
+            Pl.Plant["biomass"]["repro"] > Pl.Plant["biomass_total"]):
+            time_for_dessication = True
+
+        if Ev.calc_daily_photoperiod(day_index) > 15.5:
+            time_for_reproduction = True
+
+        Pl.Plant["stomatal_conductance"] = 1.0
+
         # 2. Calcul des coûts
         Fu.photosynthesis(Pl.Plant, Ev.Environment)
         Fu.calculate_cost(Pl.Plant, Ev.Environment, "transpiration") 
@@ -117,6 +129,7 @@ def run_simulation_collect_data(max_cycles):
         # 3. Transpiration
         Fu.handle_process(Pl.Plant, Ev.Environment, "transpiration")
         Ev.Environment["soil"]["water"] -= Pl.Plant["trans_cooling"]
+
         Pl.Plant["diag"]["water_after_transp"] = Pl.Plant["flux_in"]["water"]
         Pl.Plant["diag"]["sugar_photo"]  = Pl.Plant["flux_in"]["sugar"]
         Pl.Plant["diag"]["stomatal_conductance"] = Pl.Plant["stomatal_conductance"]
@@ -127,32 +140,25 @@ def run_simulation_collect_data(max_cycles):
         # 5. Maintenance
         Fu.handle_process(Pl.Plant, Ev.Environment, "maintenance")
 
-        # 6. Extension
         if Ev.Environment["atmos"]["light"] > 0.0:
-            Fu.handle_process(Pl.Plant, Ev.Environment, "extension")
-            Fu.update_success_history(Pl.Plant, "extension")  
-
-        # 7. Reproduction
-        if (Pl.Plant["biomass_total"] >= Pl.Plant["reproduction_biomass_thr"] and
-            Pl.Plant["health_state"] >= Pl.Plant["reproduction_health_thr"] and
-            Ev.Environment["atmos"]["light"] > 0.0):
-            Fu.handle_process(Pl.Plant, Ev.Environment, "reproduction")
-            Fu.update_success_history(Pl.Plant, "reproduction")
-        else:
-            Pl.Plant["success_cycle"]["reproduction"] = 0.0
-            Fu.update_success_history(Pl.Plant, "reproduction")
+            # 6. Reproduction
+            if time_for_reproduction:
+                if time_for_dessication: 
+                    Fu.dessication(Pl.Plant, Ev.Environment)
+                Fu.handle_process(Pl.Plant, Ev.Environment, "reproduction")
+                Fu.update_success_history(Pl.Plant, "reproduction")
+            
+            if not time_for_dessication:
+                #7. extension
+                Fu.handle_process(Pl.Plant, Ev.Environment, "extension")
+                Fu.update_success_history(Pl.Plant, "extension")  
+                # 9. Water stress adaptation
+                if Gl.trend_is_negative(Pl.Plant["success_history"]["extension"]):
+                    Fu.adapt_water_supply(Pl.Plant, Ev.Environment)
             # 8. Réserves
             Fu.refill_reserve(Pl.Plant, "sugar")
             Fu.refill_reserve(Pl.Plant, "water")
             Fu.refill_reserve(Pl.Plant, "nutrient")
-
-        # 9. Adaptation
-        if Pl.Plant["biomass_total"] >= Pl.Plant["reproduction_biomass_thr"]:
-            if Gl.trend_is_negative(Pl.Plant["success_history"]["reproduction"]):
-                Fu.adapt_water_supply(Pl.Plant, Ev.Environment)
-        else:
-            if Gl.trend_is_negative(Pl.Plant["success_history"]["extension"]):
-                Fu.adapt_water_supply(Pl.Plant, Ev.Environment)
 
         # 10. Mortalité
         if Pl.Plant["biomass_total"] <= 0.0001: 

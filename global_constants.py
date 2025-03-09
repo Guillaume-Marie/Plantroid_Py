@@ -4,16 +4,14 @@
 
 # Variables et constantes globales :
 time = 0  # temps (unité discrète)
-max_cycles = 24*400
+max_cycles = 24*210
 DT = 3600 # pas de temps en secondes
-delta_adapt = 0.01/72
-N = 10
-dying_state_thr = 1000
+delta_adapt = 0.0000015 * DT # vitesse d'evolution des paramètre par DT 0.000001389
+N = 24
 total_soil_volume = 1e7 # cm³ (hypothèse : 10 m³ de sol total dans l'environnement)
 
 # Conversion lumière -> sucres.
 # Voir explication dans le commentaire ci-dessus.
-conversion_factor = 0.000001  # J/s ---> gC6H12O6/s
 k_root = 100 # cm³ de sol exploré par gramme de racine (à ajuster selon le type de sol)
 # Constantes utiles
 LATENT_HEAT_VAPORIZATION = 2450   # J par g d'eau (approx. ~ 2450 J/g)

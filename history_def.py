@@ -7,6 +7,8 @@ history = {
     "biomass_support": [],
     "biomass_photo":   [],
     "biomass_absorp":  [],
+    "biomass_repro": [],
+    "biomass_necromass": [],
     # SLAI et santé
     "slai": [],
     "health_state": [],
@@ -50,6 +52,7 @@ history = {
     "ratio_support": [],
     "ratio_photo": [],
     "ratio_absorp": [],
+    "ratio_repro": [],
     # Stress
     "stress_sugar": [],
     "stress_water": []
@@ -62,6 +65,8 @@ def history_update(Plant, history, Environment, time):
         history["biomass_support"].append(Plant["biomass"]["support"])
         history["biomass_photo"].append(Plant["biomass"]["photo"])
         history["biomass_absorp"].append(Plant["biomass"]["absorp"])
+        history["biomass_repro"].append(Plant["biomass"]["repro"])
+        history["biomass_necromass"].append(Plant["biomass"]["necromass"])
         # slai, santé
         history["slai"].append(Plant["slai"])
         history["health_state"].append(Plant["health_state"])
@@ -108,7 +113,7 @@ def history_update(Plant, history, Environment, time):
         history["ratio_support"].append(Plant["ratio_allocation"]["support"])
         history["ratio_photo"].append(Plant["ratio_allocation"]["photo"])
         history["ratio_absorp"].append(Plant["ratio_allocation"]["absorp"])
-
+        history["ratio_repro"].append(Plant["ratio_allocation"]["repro"])
         # Stress : on prend la dernière valeur des listes de stress
         # (sugar et water) si elles existent, sinon 0
         if Plant["stress_history"]["sugar"]:

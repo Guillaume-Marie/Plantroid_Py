@@ -101,17 +101,20 @@ def simulate_and_plot():
     # ------------------------------------------------------------------
     # Rangée 0
     # ------------------------------------------------------------------
-    day_axes[0,0].plot(day_data["time"], day_data["biomass_total"])
+    day_axes[0,0].plot(day_data["time"], day_data["biomass_total"], label="Biomasse")
+    day_axes[0,0].plot(day_data["time"], day_data["biomass_necromass"], label="Nécromasse")
     day_axes[0,0].set_xlabel("Jour")
-    day_axes[0,0].set_ylabel("Biomasse totale (g)")
-    day_axes[0,0].set_title("Biomasse totale")
+    day_axes[0,0].set_ylabel("Biomasse (g)")
+    day_axes[0,0].set_title("Évolution : vivante vs nécromasse")
+    day_axes[0,0].legend()
 
-    day_axes[0,1].plot(day_data["time"], day_data["biomass_support"], label="support")
-    day_axes[0,1].plot(day_data["time"], day_data["biomass_photo"],   label="photo")
-    day_axes[0,1].plot(day_data["time"], day_data["biomass_absorp"],  label="absorp")
+    day_axes[0,1].plot(day_data["time"], day_data["biomass_support"], label="Support")
+    day_axes[0,1].plot(day_data["time"], day_data["biomass_photo"],   label="Photo")
+    day_axes[0,1].plot(day_data["time"], day_data["biomass_absorp"],  label="Absorp")
+    day_axes[0,1].plot(day_data["time"], day_data["biomass_repro"],   label="Repro")
     day_axes[0,1].set_xlabel("Jour")
     day_axes[0,1].set_ylabel("Biomasse (g)")
-    day_axes[0,1].set_title("Biomasse par compartiment")
+    day_axes[0,1].set_title("Compartiments vivants")
     day_axes[0,1].legend()
 
     day_axes[0,2].plot(day_data["time"], day_data["slai"])
@@ -205,8 +208,7 @@ def simulate_and_plot():
     day_axes[3,2].plot(day_data["time"], day_data["ratio_support"], label="support")
     day_axes[3,2].plot(day_data["time"], day_data["ratio_photo"], label="photo")
     day_axes[3,2].plot(day_data["time"], day_data["ratio_absorp"], label="absorp")
-    day_axes[3,2].plot(day_data["time"], day_data["stress_sugar"], label="stress_sugar", linestyle="--")
-    day_axes[3,2].plot(day_data["time"], day_data["stress_water"], label="stress_water", linestyle="--")
+    day_axes[3,2].plot(day_data["time"], day_data["ratio_repro"], label="repro")
     day_axes[3,2].set_xlabel("Jour")
     day_axes[3,2].set_ylabel("Ratios / Stress")
     day_axes[3,2].set_title("Ratios d’allocation & Stress")
@@ -384,7 +386,7 @@ def simulate_and_plot():
     night_axes[6,2].legend()
 
     night_fig.tight_layout()
-    plt.show()
+    #plt.show()
 
 if __name__ == "__main__":
     simulate_and_plot()
