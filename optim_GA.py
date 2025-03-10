@@ -53,7 +53,7 @@ def ga_multi_criteria_optimization(
         "r_max": (0.001, 0.01),
         "alpha": (0.0001, 0.001),
         "light_absorption_max": (0.3, 1.0),
-        "transpiration_coefficient": (0.0001, 0.005)
+        "stomatal_density": (1e6, 1e7)
     }
     param_names = list(param_bounds.keys())
 
@@ -84,7 +84,7 @@ def ga_multi_criteria_optimization(
         plant_copy["r_max"] = individual["r_max"]
         plant_copy["alpha"] = individual["alpha"]
         plant_copy["light_absorption_max"] = individual["light_absorption_max"]
-        plant_copy["transpiration_coefficient"] = individual["transpiration_coefficient"]
+        plant_copy["stomatal_density"] = individual["stomatal_density"]
 
         # Sauvegarde l’état global
         original_plant = Pl.Plant

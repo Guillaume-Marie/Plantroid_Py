@@ -43,11 +43,13 @@ history = {
     # Reserve used (bool -> 0 ou 1) pour 3 process
     "reserve_used_maintenance": [],
     "reserve_used_extension": [],
-    "reserve_used_reproduction": [],
+    "reserve_used_reproduction": [],   
+    "reserve_used_transpiration": [],
     # Adjusted used (bool -> 0 ou 1)
     "adjusted_used_maintenance": [],
     "adjusted_used_extension": [],
     "adjusted_used_reproduction": [],
+    "adjusted_used_transpiration": [],
     # Ratios d’allocation
     "ratio_support": [],
     "ratio_photo": [],
@@ -102,12 +104,14 @@ def history_update(Plant, history, Environment, time):
         # reserve_used / adjusted_used en 0 ou 1
         history["reserve_used_maintenance"].append(1 if Plant["reserve_used"]["maintenance"] else 0)
         # On n’a pas "extension" dans reserve_used, donc on met 0:
-        history["reserve_used_extension"].append(0)
+        history["reserve_used_extension"].append(1 if Plant["reserve_used"]["extension"] else 0)
         history["reserve_used_reproduction"].append(1 if Plant["reserve_used"]["reproduction"] else 0)
+        history["reserve_used_transpiration"].append(1 if Plant["reserve_used"]["transpiration"] else 0)   
 
         history["adjusted_used_maintenance"].append(1 if Plant["adjusted_used"]["maintenance"] else 0)
         history["adjusted_used_extension"].append(1 if Plant["adjusted_used"]["extension"] else 0)
         history["adjusted_used_reproduction"].append(1 if Plant["adjusted_used"]["reproduction"] else 0)
+        history["adjusted_used_transpiration"].append(1 if Plant["adjusted_used"]["transpiration"] else 0)
 
         # Ratios d’allocation
         history["ratio_support"].append(Plant["ratio_allocation"]["support"])

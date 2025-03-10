@@ -95,7 +95,7 @@ def photosynthesis(Plant, Env):
     C6H12O6_flux_pot = power_absorbed * Plant["watt_to_sugar_coeff"] * temp_lim 
 
     # facteur CO2 dimensionless (0...1)
-    cf = Env["atmos"]["Co2"] / 800.0
+    cf = Env["atmos"]["Co2"] / 400.0
 
     # on prend en compte la conductance et le CO2
     C6H12O6_flux = C6H12O6_flux_pot * cf * Plant["stomatal_conductance"] 
@@ -119,6 +119,16 @@ def nutrient_absorption(Plant, Env):
     # Eau absorbée (déjà calculée dans flux_in["water"])
     # Nutriments absorbés proportionnellement
     Plant["flux_in"]["nutrient"] = Plant["flux_in"]["water"] * Plant["water_nutrient_coeff"]
+
+
+def compute_stomatal_area(Plant):
+    # Stomatal_number * pore_area => aire totale (m²) de tous les stomates / m² de feuille
+    # => m² de pores par m² foliaire
+    stomatal_factor = (Plant["stomatal_density"] *
+                        Plant["biomass"]["photo"] *
+                        Plant["sla_max"] * 
+                        Plant["slai"])
+    return stomatal_factor
 
 def compute_root_explored_volume(Plant):
     """
@@ -146,17 +156,13 @@ def compute_max_transpiration_capacity(Plant, Env):
     - capacité de transpiration foliaire
     - capacité de transport (biomasse support)
     - eau disponible dans le sol
-
-    Modifié pour sauvegarder le compartiment limitant dans diag["transp_limit_pool"].
     """
     # 1) Calcul des capacités individuelles
-    photo_capacity = (Plant["biomass"]["photo"]
-                      * Plant["slai"]
-                      * Plant["stomatal_conductance"]
-                      * Plant["transpiration_coeff"]
-                      * Gl.DT)
+    photo_capacity = (compute_stomatal_area(Plant) * 
+                      Gl.D_H2O * Gl.VPD *
+                      Plant["stomatal_conductance"] * Gl.DT)
     support_capacity = (Plant["biomass"]["support"]
-                        * Plant["support_transport_coeff"])
+                        * Plant["support_transport_coeff"]* Gl.DT)
     soil_capacity = compute_available_water(Plant, Env)
 
     # 2) Rassembler les capacités dans un dictionnaire

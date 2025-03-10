@@ -78,8 +78,14 @@ def run_simulation_collect_data(max_cycles):
 
 
         Pl.Plant["diag"] = {}
-        Pl.Plant["reserve_used"]  = {"maintenance": False, "reproduction": False}
-        Pl.Plant["adjusted_used"] = {"maintenance": False, "extension": False, "reproduction": False}
+        Pl.Plant["reserve_used"]  = {"maintenance": False,
+                                    "extension": False, 
+                                    "reproduction": False, 
+                                    "transpiration":False}
+        Pl.Plant["adjusted_used"] = {"maintenance": False, 
+                                     "extension": False, 
+                                     "reproduction": False, 
+                                     "transpiration":False}
         Pl.Plant["success_cycle"] = {"extension": 1.0, "reproduction": 1.0}
         Pl.Plant["cost"] = {
             "extension":   {"sugar": 0.0, "water": 0.0, "nutrient": 0.0},
@@ -153,7 +159,7 @@ def run_simulation_collect_data(max_cycles):
                 Fu.handle_process(Pl.Plant, Ev.Environment, "extension")
                 Fu.update_success_history(Pl.Plant, "extension")  
                 # 9. Water stress adaptation
-                if Gl.trend_is_negative(Pl.Plant["success_history"]["extension"]):
+                if Pl.Plant["adjusted_used"]["transpiration"]:
                     Fu.adapt_water_supply(Pl.Plant, Ev.Environment)
             # 8. Réserves
             Fu.refill_reserve(Pl.Plant, "sugar")

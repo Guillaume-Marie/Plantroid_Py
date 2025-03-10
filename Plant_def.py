@@ -3,17 +3,17 @@ import global_constants as Gl
 # Plante initiale
 Plant = {
     "T_optim":                     25.0, 
-    "r_max":                       0.009783, # 0.00533
-    "alpha":                       0.000813,
+    "r_max":                       9.78e-3, # 0.00533
+    "alpha":                       8.13e-4,
     "temp_photo_sensitivity":      0.02,
     "sla_max":                     0.02,
     "stomatal_conductance_min":    0.01,
-    "light_absorption_max":        0.3131,
-    "watt_to_sugar_coeff":         0.000001,  # J/s ---> gC6H12O6/s
-    "transpiration_coeff":         0.00115,
-    "support_transport_coeff":     200.0,
+    "light_absorption_max":        1.0,
+    "watt_to_sugar_coeff":         1.7e-6,    # J/s ---> gC6H12O6/s
+    "support_transport_coeff":     5e-3,    # (g/s/MPa)/gsupport
     "soil_supply_coeff":           0.1,
-    "water_nutrient_coeff":        0.003,
+    "water_nutrient_coeff":        3e-3,
+    "stomatal_density":            5.0e7,   # stomates/m²
     "dessication_rate":            Gl.delta_adapt, 
     "cost_params": {
         "extension": {
@@ -29,7 +29,7 @@ Plant = {
         }
     },
     "storage_fraction": {"sugar": 0.05, "water": 0.05, "nutrient": 0.05},
-    "ratio_allocation": {"support": 0.05, "absorp": 0.15, "photo": 0.8, "repro": 0.0},
+    "ratio_allocation": {"support": 0.2, "absorp": 0.3, "photo": 0.5, "repro": 0.0},
     "stomatal_conductance": 1.0,
     "light_absorption_coeff": 0.0,
     "trans_cooling" : 0.0,
@@ -48,8 +48,13 @@ Plant = {
     "health_state": 100.0,
     "alive": True,
     "germinated": False,
-    "reserve_used":  {"maintenance": False, "reproduction": False},
-    "adjusted_used": {"maintenance": False, "extension": False, "reproduction": False},
+    "reserve_used":  {"maintenance": False, 
+                      "extension": False, 
+                      "reproduction": False},
+    "adjusted_used": {"maintenance": False, 
+                      "extension": False, 
+                      "reproduction": False,
+                      "transpiration": False},
     "stress_history": {"sugar": [], "water": [], "nutrient": []},
     "success_history": {"extension": [], "reproduction": []},
     "success_cycle":   {"extension": 1.0, "reproduction": 1.0},

@@ -166,11 +166,14 @@ def simulate_and_plot():
     day_axes[2,0].set_ylabel("Conductance (0..1)")
     day_axes[2,0].set_title("Conductance stomatique")
 
-    day_axes[2,1].plot(day_data["time"], day_data["success_extension"], label="Extension")
-    day_axes[2,1].plot(day_data["time"], day_data["success_reproduction"], label="Reproduction")
+    # reserve_used & adjusted_used
+    day_axes[2,1].plot(day_data["time"], day_data["reserve_used_maintenance"], label="Maint.")
+    day_axes[2,1].plot(day_data["time"], day_data["reserve_used_extension"], label="Ext.")
+    day_axes[2,1].plot(day_data["time"], day_data["reserve_used_reproduction"], label="Repr.")
+    day_axes[2,1].plot(day_data["time"], day_data["reserve_used_transpiration"], label="Transp.")  
     day_axes[2,1].set_xlabel("Jour")
-    day_axes[2,1].set_ylabel("Succès (0..1)")
-    day_axes[2,1].set_title("Succès des processus")
+    day_axes[2,1].set_ylabel("0 ou 1")
+    day_axes[2,1].set_title("reserve_used (bool)")
     day_axes[2,1].legend()
 
     day_axes[2,2].plot(day_data["time"], day_data["transpiration_cooling"], label="Cooling")
@@ -196,9 +199,10 @@ def simulate_and_plot():
     day_axes[3,0].set_title("Luminosité atmosphérique")
     day_axes[3,0].legend()
 
-    day_axes[3,1].plot(day_data["time"], day_data["adjusted_used_maintenance"], label="Adjusted Maint.")
-    day_axes[3,1].plot(day_data["time"], day_data["adjusted_used_extension"], label="Adjusted Ext.")
-    day_axes[3,1].plot(day_data["time"], day_data["adjusted_used_reproduction"], label="Adjusted Repr.")
+    day_axes[3,1].plot(day_data["time"], day_data["adjusted_used_maintenance"], label="Maint.")
+    day_axes[3,1].plot(day_data["time"], day_data["adjusted_used_extension"], label="Ext.")
+    day_axes[3,1].plot(day_data["time"], day_data["adjusted_used_reproduction"], label="Repr.")
+    day_axes[3,1].plot(day_data["time"], day_data["adjusted_used_transpiration"], label="Transp.")   
     day_axes[3,1].set_xlabel("Jour")
     day_axes[3,1].set_ylabel("0 ou 1")
     day_axes[3,1].set_title("adjusted_used (bool)")
@@ -214,13 +218,11 @@ def simulate_and_plot():
     day_axes[3,2].set_title("Ratios d’allocation & Stress")
     day_axes[3,2].legend()
 
-    # reserve_used & adjusted_used
-    day_axes[3,3].plot(day_data["time"], day_data["reserve_used_maintenance"], label="Reserve used Maint.")
-    day_axes[3,3].plot(day_data["time"], day_data["reserve_used_extension"], label="Reserve used Ext.")
-    day_axes[3,3].plot(day_data["time"], day_data["reserve_used_reproduction"], label="Reserve used Repr.")
+    day_axes[3,3].plot(day_data["time"], day_data["success_extension"], label="Extension")
+    day_axes[3,3].plot(day_data["time"], day_data["success_reproduction"], label="Reproduction")
     day_axes[3,3].set_xlabel("Jour")
-    day_axes[3,3].set_ylabel("0 ou 1")
-    day_axes[3,3].set_title("reserve_used (bool)")
+    day_axes[3,3].set_ylabel("Succès (0..1)")
+    day_axes[3,3].set_title("Succès des processus")
     day_axes[3,3].legend()
 
     day_fig.tight_layout()
