@@ -6,7 +6,20 @@ import math
 Environment = {
     "soil":    {"water": 2000000.0, "nutrient": 5000000.0},
     "litter":  {"absorp": 20000.0, "photo": 500.0, "support": 500.0},
-    "atmos":   {"Co2": 1000.0, "light": 1000.0, "water": 100.0, "temperature": 25.0}
+    "atmos":   {"Co2": 1000.0, "light": 1000.0, "water": 100.0, "temperature": 25.0},
+    # -------------------------
+    # 1) Paramètres de base
+    # -------------------------
+    "day_temp_amplitude":   5.0,    # amplitude (°C) de la variation jour/nuit
+    "seasonal_temp_offset": 10.0,   # amplitude (°C) de la variation saisonnière
+    "base_temp":            10.0,  # température moyenne annuelle (°C)
+
+    "base_light":           800.0, # luminosité max (p. ex. W/m²) en plein été
+    "seasonal_light_var":   0.5,    # en hiver, la luminosité max ~ base_light * (1 - seasonal_light_var)
+
+    "precipitation_base":   3.0,    # mm (ou g eau/m²) par jour, en moyenne
+    "seasonal_rain_var":    0.5,    # +/- 50% selon la saison
+    "random_factor":        0.3    # intensité du facteur aléatoire (30%)
 }
 
 #######################################
@@ -32,19 +45,6 @@ def update_environment(time, Env):
     - random_factor       : facteur d’aléa météo pour pluie ou luminosité
     """
 
-    # -------------------------
-    # 1) Paramètres de base
-    # -------------------------
-    day_temp_amplitude   = 5.0    # amplitude (°C) de la variation jour/nuit
-    seasonal_temp_offset = 10.0   # amplitude (°C) de la variation saisonnière
-    base_temp            = 10.0   # température moyenne annuelle (°C)
-
-    base_light           = 800.0 # luminosité max (p. ex. W/m²) en plein été
-    seasonal_light_var   = 0.5    # en hiver, la luminosité max ~ base_light * (1 - seasonal_light_var)
-
-    precipitation_base   = 3.0    # mm (ou g eau/m²) par jour, en moyenne
-    seasonal_rain_var    = 0.5    # +/- 50% selon la saison
-    random_factor        = 0.3    # intensité du facteur aléatoire (30%)
 
     # -------------------------
     # 2) Conversion du temps
@@ -64,13 +64,13 @@ def update_environment(time, Env):
     #  T_season = base_temp + seasonal_temp_offset * sin( 2π*(day_of_year - 81)/365 )
     # (Le décalage de ~81 jours rapproche le pic de la fin juin.)
     seasonal_angle = 2.0 * math.pi * (day_of_year - 81) / 365.0
-    T_season = base_temp + seasonal_temp_offset * math.sin(seasonal_angle)
+    T_season = Environment["base_temp"] + Environment["seasonal_temp_offset"] * math.sin(seasonal_angle)
 
     # De même pour la luminosité maximale journalière 
     # (on suppose plus de lumière l’été et moins l’hiver).
     # Par exemple, en hiver : luminosité max = base_light * (1 - seasonal_light_var)
     # en été : ~ base_light * (1 + seasonal_light_var)
-    light_season_factor = 1.0 + seasonal_light_var * math.sin(seasonal_angle)
+    light_season_factor = 1.0 + Environment["seasonal_light_var"] * math.sin(seasonal_angle)
     # coefficient multiplicateur de la lumière journalière
     # oscillant entre (1 - seasonal_light_var) et (1 + seasonal_light_var).
     # On clamp si besoin pour éviter d’être < 0.
@@ -80,7 +80,7 @@ def update_environment(time, Env):
     # Même logique pour la pluie : 
     # précipitations plus fortes au printemps/automne, plus faibles en été/hiver
     # (ça dépend des régions, on adapte ci-dessous un sinus simple).
-    precipitation_season_factor = 1.0 + seasonal_rain_var * math.sin(seasonal_angle)
+    precipitation_season_factor = 1.0 + Environment["seasonal_rain_var"] * math.sin(seasonal_angle)
 
     # -------------------------
     # 4) Cycle journalier
@@ -91,7 +91,7 @@ def update_environment(time, Env):
     
     # (Pour rester simple, on prend un pic au milieu de la journée de 12h – c’est perfectible)
     daily_angle = math.pi * (hour_in_day / 12.0 - 0.5)
-    T_daily = T_season + day_temp_amplitude * math.sin(daily_angle)
+    T_daily = T_season +  Environment["day_temp_amplitude"] * math.sin(daily_angle)
 
     # Lumière : on considère 12-16h de jour l’été, 8-10h de jour l’hiver, etc.
     # Pour simplifier, on fait :
@@ -101,7 +101,7 @@ def update_environment(time, Env):
     # On la multiplie par la factor saisonnier + un aléa.
     if 6 <= hour_in_day < 20:
         frac_daytime = (hour_in_day - 6) / 14.0  # de 0..1 entre 6h et 20h
-        light_day = base_light * light_season_factor * max(0.0, math.sin(math.pi * frac_daytime))
+        light_day =  Environment["base_light"] * light_season_factor * max(0.0, math.sin(math.pi * frac_daytime))
     else:
         light_day = 0.0
 
@@ -116,9 +116,9 @@ def update_environment(time, Env):
     
     if hour_in_day == 6:
         # pluie journalière moyenne
-        daily_rain_mean = precipitation_base * precipitation_season_factor
+        daily_rain_mean =  Environment["precipitation_base"] * precipitation_season_factor
         # aléa multiplicatif
-        daily_rain = daily_rain_mean * (1.0 + random_factor * (2.0*random.random() - 1.0))
+        daily_rain = daily_rain_mean * (1.0 +  Environment["random_factor"] * (2.0*random.random() - 1.0))
         # on ajoute la pluie dans le sol (grand réservoir) 
         # Conversion mm -> g eau... c’est arbitraire, on peut rester cohérent
         Env["soil"]["water"] += daily_rain * 1000.0  # x1000 si 1 mm = 1 L/m² ...
@@ -131,8 +131,8 @@ def update_environment(time, Env):
     # 6) Ajout d’un facteur aléatoire
     # -------------------------
     # On peut ajouter un bruit sur la température, la lumière...
-    rand_temp = 1.0 + random_factor * (2.0*random.random() - 1.0)
-    rand_light = 1.0 + 0.2 * random_factor * (2.0*random.random() - 1.0)  # plus faible
+    rand_temp = 1.0 + Environment["random_factor"] * (2.0*random.random() - 1.0)
+    rand_light = 1.0 + 0.2 * Environment["random_factor"] * (2.0*random.random() - 1.0)  # plus faible
     T_final = T_daily * rand_temp
     light_final = light_day * rand_light
 
