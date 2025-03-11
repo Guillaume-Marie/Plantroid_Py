@@ -38,7 +38,10 @@ def destroy_biomass(Plant, Env, which_biomass, damage_factor=None):
     Plant["biomass"][which_biomass] -= lost
 
     # On ajoute la même quantité à la nécromasse
-    Plant["biomass"]["necromass"] += lost
+    if which_biomass == "necromass" or which_biomass == "repro":
+        Env["litter"]["necromass"] += lost
+    else: 
+        Plant["biomass"]["necromass"] += lost
 
     # (Optionnel) On augmente la litière de l'environnement
     #Env["litter"][which_biomass] += lost
@@ -308,7 +311,7 @@ def post_process_success(Plant, Env, process):
         pay_cost(Plant, Env, process)
         restore_health(Plant)
     elif process == "reproduction":        
-        allocate_reproduction(Plant)
+        allocate_new_biomass(Plant)
         pay_cost(Plant, Env, process)
         restore_health(Plant)
 
@@ -316,18 +319,19 @@ def post_process_resist(Plant, Env, process):
     if process == "transpiration":         
         pay_cost(Plant, Env, process)
         destroy_biomass(Plant, Env, "photo", Gl.delta_adapt)
-        pass
     elif process == "maintenance":
         pay_cost(Plant, Env, process)
-        destroy_biomass(Plant, Env, "support",Gl.delta_adapt)
-        pass
+        if Plant["is_dormancy"]:
+            destroy_biomass(Plant, Env, "support",Gl.delta_adapt/10)
+            destroy_biomass(Plant, Env, "repro", Gl.delta_adapt)
+            destroy_biomass(Plant, Env, "necromass", Gl.delta_adapt)
     elif process == "extension":
         allocate_new_biomass(Plant)
         pay_cost(Plant, Env, process)
         adjust_success_cycle(Plant, "extension")
         restore_health(Plant)
     elif process == "reproduction":        
-        allocate_reproduction(Plant)        
+        allocate_new_biomass(Plant)        
         pay_cost(Plant, Env, process)
         adjust_success_cycle(Plant, "reproduction")
         restore_health(Plant)
@@ -354,7 +358,7 @@ def post_process_fail(Plant, Env, process):
         adjust_success_cycle(Plant, "reproduction")
         if Plant["success_cycle"]["reproduction"] > 0:       
             pay_cost(Plant, Env, process)
-            allocate_reproduction(Plant)
+            allocate_new_biomass(Plant)
 
 
 
@@ -431,7 +435,10 @@ def calculate_cost(Plant, Env, process):
                 cost_factor = Plant["cost_params"][process]["unique"][r]
                 Plant["cost"][process][r] = cost_factor * Plant["biomass"]["necromass"]        
     elif process == "maintenance":
-            cost_factor = Plant["cost_params"][process]["unique"]["sugar"]
+            if not Plant["is_dormancy"]:
+                cost_factor = Plant["cost_params"][process]["unique"]["sugar"]
+            else:
+                cost_factor = Plant["cost_params"][process]["unique"]["sugar"]/4
             # Coût proportionnel à la biomasse totale et au temps
             Plant["cost"][process]["sugar"] = cost_factor *  \
                                         Plant["biomass_total"] * Gl.DT
@@ -565,35 +572,53 @@ def adapt_water_supply(Plant, Env):
         #Plant["storage_fraction"]["water"]    += Gl.delta_adapt
         #Plant["storage_fraction"]["nutrient"] += Gl.delta_adapt
         if Plant["ratio_allocation"]["absorp"] <= 0.8:
-            Plant["ratio_allocation"]["support"]  -= Gl.delta_adapt/2
+            Plant["ratio_allocation"]["support"]  -= max(Gl.delta_adapt/2, 0.0)
             Plant["ratio_allocation"]["absorp"]   += Gl.delta_adapt
-            Plant["ratio_allocation"]["photo"]    -= Gl.delta_adapt/2
-    elif Plant["transp_limit_pool"]== "absorp":
-        if Plant["ratio_allocation"]["absorp"] <= 0.8:
-            Plant["ratio_allocation"]["support"]  -= Gl.delta_adapt/2
-            Plant["ratio_allocation"]["absorp"]   += Gl.delta_adapt
-            Plant["ratio_allocation"]["photo"]    -= Gl.delta_adapt/2    
+            Plant["ratio_allocation"]["photo"]    -= max(Gl.delta_adapt/2, 0.0)
     elif Plant["transp_limit_pool"]== "support":
         if Plant["ratio_allocation"]["support"] <= 0.8:
             Plant["ratio_allocation"]["support"]  += Gl.delta_adapt
-            Plant["ratio_allocation"]["absorp"]   -= Gl.delta_adapt/2
-            Plant["ratio_allocation"]["photo"]    -= Gl.delta_adapt/2 
+            Plant["ratio_allocation"]["absorp"]   -= max(Gl.delta_adapt/2, 0.0)
+            Plant["ratio_allocation"]["photo"]    -= max(Gl.delta_adapt/2 , 0.0)   
     elif Plant["transp_limit_pool"]== "photo":
         #Plant["storage_fraction"]["sugar"] += Gl.delta_adapt
         if Plant["ratio_allocation"]["photo"] <= 0.8:
-            Plant["ratio_allocation"]["support"] -= Gl.delta_adapt/2
+            Plant["ratio_allocation"]["support"] -= max(Gl.delta_adapt/2, 0.0)
             Plant["ratio_allocation"]["photo"]   += Gl.delta_adapt
-            Plant["ratio_allocation"]["absorp"]  -= Gl.delta_adapt/2
+            Plant["ratio_allocation"]["absorp"]  -= max(Gl.delta_adapt/2, 0.0)
         adapt_leaf_structure(Plant, Env)
+    check_allocation(Plant)
+
+def adapt_for_reproduction(Plant):
+    """
+    Réallocation de la biomasse en cas de stress eau/sucre chroniques.
+    """ 
+    if Plant["ratio_allocation"]["repro"] <= Plant["alloc_repro_max"]:
+        Plant["ratio_allocation"]["support"] -= max(Plant["alloc_change_rate"]/3, 0.0)
+        Plant["ratio_allocation"]["photo"]   -= max(Plant["alloc_change_rate"]/3, 0.0)
+        Plant["ratio_allocation"]["absorp"]  -= max(Plant["alloc_change_rate"]/3, 0.0)
+        Plant["ratio_allocation"]["repro"]   +=Plant["alloc_change_rate"] 
+    check_allocation(Plant)
+
+def check_allocation(Plant):
+    sumalloc = (Plant["ratio_allocation"]["support"]+
+    Plant["ratio_allocation"]["photo"] +
+    Plant["ratio_allocation"]["absorp"] +
+    Plant["ratio_allocation"]["repro"])
+    if sumalloc != 1.0:
+        Plant["ratio_allocation"]["support"]/sumalloc
+        Plant["ratio_allocation"]["photo"] /sumalloc
+        Plant["ratio_allocation"]["absorp"]/sumalloc
+        Plant["ratio_allocation"]["repro"]/sumalloc
 
 def dessication(Plant, Env):
     """
     Réallocation de la biomasse en cas de stress eau/sucre chroniques.
     """
-    destroy_biomass(Plant, Env, "support", Plant["dessication_rate"])
-    destroy_biomass(Plant, Env, "absorp", Plant["dessication_rate"])
+    if Plant["growth_type"] == "annual" or Plant["growth_type"] == "biannual":
+        destroy_biomass(Plant, Env, "support", Plant["dessication_rate"])
+    destroy_biomass(Plant, Env, "absorp", Plant["dessication_rate"]/2)
     destroy_biomass(Plant, Env, "photo", Plant["dessication_rate"])
-
 
 def update_biomass_total(Plant):
     """Recalcule la biomasse totale vivante."""
@@ -603,20 +628,18 @@ def update_biomass_total(Plant):
         + Plant["biomass"]["absorp"] 
     )
 
-def allocate_reproduction(Plant):
-    nb = Plant["new_biomass"]
-    Plant["biomass"]["repro"]   += nb
-
 def allocate_new_biomass(Plant):
     nb = Plant["new_biomass"]
     ra = Plant["ratio_allocation"]
     add_support = nb * ra["support"]
     add_photo   = nb * ra["photo"]
     add_absorp  = nb * ra["absorp"]
+    add_repro   = nb * ra["repro"]
 
     Plant["biomass"]["support"] += add_support
     Plant["biomass"]["photo"]   += add_photo
     Plant["biomass"]["absorp"]  += add_absorp
+    Plant["biomass"]["repro"]   += add_repro
 
     Plant["new_biomass"] = 0.0
 

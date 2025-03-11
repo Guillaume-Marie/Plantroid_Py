@@ -9,6 +9,7 @@ import global_constants as Gl
 import run_and_plot as Rp
 
 def ga_multi_criteria_optimization(
+    species_name = "Ble",
     population_size=20,
     generations=10,
     crossover_rate=0.7,
@@ -46,6 +47,7 @@ def ga_multi_criteria_optimization(
     Paramètres GA:
       population_size, generations, crossover_rate, mutation_rate, elite_size
     """
+    Pl.set_plant_species(Pl.Plant, species_name, Pl.species_db)
 
     # ----------------------------------------------------------------
     # 1) Bornes des 5 paramètres
@@ -291,19 +293,20 @@ def ga_multi_criteria_optimization(
 
 if __name__ == "__main__":
     best_config, best_score = ga_multi_criteria_optimization(
+        species_name = "mais",
         population_size=20,
         generations=20,
         crossover_rate=0.7,
         mutation_rate=0.1,
         elite_size=2,
-        B_max=6.0,
-        BT_min=5.0,
-        BT_max=6.0,
-        BL_min=0.0,
+        B_max=200.0,
+        BT_min=150.0,
+        BT_max=250.0,
+        BL_min=200.0,
         BL_max=0.1,
         alpha_biomass=1.0,
         alpha_leaving=1.0,
         alpha_sugar=1.0,
         alpha_stability=0.0
     )
-    Rp.simulate_and_plot()  
+    Rp.simulate_and_plot("mais")  

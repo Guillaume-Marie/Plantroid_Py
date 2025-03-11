@@ -45,6 +45,18 @@ history = {
     "reserve_used_extension": [],
     "reserve_used_reproduction": [],   
     "reserve_used_transpiration": [],
+    "cost_transpiration_sugar": [], 
+    "cost_transpiration_water": [], 
+    "cost_transpiration_nutrient": [],
+    "cost_maintenance_sugar": [], 
+    "cost_maintenance_water": [], 
+    "cost_maintenance_nutrient": [],
+    "cost_extension_sugar": [], 
+    "cost_extension_water": [], 
+    "cost_extension_nutrient": [],
+    "cost_reproduction_sugar": [], 
+    "cost_reproduction_water": [], 
+    "cost_reproduction_nutrient": [],
     # Adjusted used (bool -> 0 ou 1)
     "adjusted_used_maintenance": [],
     "adjusted_used_extension": [],
@@ -112,6 +124,19 @@ def history_update(Plant, history, Environment, time):
         history["adjusted_used_extension"].append(1 if Plant["adjusted_used"]["extension"] else 0)
         history["adjusted_used_reproduction"].append(1 if Plant["adjusted_used"]["reproduction"] else 0)
         history["adjusted_used_transpiration"].append(1 if Plant["adjusted_used"]["transpiration"] else 0)
+
+        history["cost_transpiration_sugar"].append(Plant["cost"]["transpiration"]["sugar"])
+        history["cost_transpiration_water"].append(Plant["cost"]["transpiration"]["water"])
+        history["cost_transpiration_nutrient"].append(Plant["cost"]["transpiration"]["nutrient"])
+        history["cost_maintenance_sugar"].append(Plant["cost"]["maintenance"]["sugar"])
+        history["cost_maintenance_water"].append(Plant["cost"]["maintenance"]["water"])
+        history["cost_maintenance_nutrient"].append(Plant["cost"]["maintenance"]["nutrient"])
+        history["cost_extension_sugar"].append(Plant["cost"]["extension"]["sugar"])
+        history["cost_extension_water"].append(Plant["cost"]["extension"]["water"])
+        history["cost_extension_nutrient"].append(Plant["cost"]["extension"]["nutrient"])
+        history["cost_reproduction_sugar"].append(Plant["cost"]["reproduction"]["sugar"])
+        history["cost_reproduction_water"].append(Plant["cost"]["reproduction"]["water"])
+        history["cost_reproduction_nutrient"].append(Plant["cost"]["reproduction"]["nutrient"])
 
         # Ratios d’allocation
         history["ratio_support"].append(Plant["ratio_allocation"]["support"])

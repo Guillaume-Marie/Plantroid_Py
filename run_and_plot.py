@@ -2,6 +2,7 @@
 import matplotlib.pyplot as plt
 import time_loop as Ti
 import global_constants as Gl
+import Plant_def as Pl
 
 def aggregate_day_night(history, threshold_light=1.0):
     """
@@ -86,16 +87,17 @@ def aggregate_day_night(history, threshold_light=1.0):
     return day_data, night_data
 
 
-
-def simulate_and_plot():
+def simulate_and_plot(species_name):
     """
     Exécute la simulation, agrège les données à l'échelle journalière,
     et produit divers graphiques (y compris météo, reserve_used, etc.).
     """
+    Pl.set_plant_species(Pl.Plant, species_name, Pl.species_db)
+
     data, final_Plant, final_env = Ti.run_simulation_collect_data(Gl.max_cycles)
     day_data, night_data = aggregate_day_night(data)
 
-    day_fig, day_axes = plt.subplots(nrows=4, ncols=4, figsize=(65, 35))
+    day_fig, day_axes = plt.subplots(nrows=5, ncols=4, figsize=(65, 35))
     day_fig.suptitle("", fontsize=16)
 
     # ------------------------------------------------------------------
@@ -224,6 +226,44 @@ def simulate_and_plot():
     day_axes[3,3].set_ylabel("Succès (0..1)")
     day_axes[3,3].set_title("Succès des processus")
     day_axes[3,3].legend()
+
+
+    ax = day_axes[4, 0]
+    x = day_data["time"]      
+    ax.plot(x, day_data["cost_transpiration_water"], label="Eau")  
+    ax.set_xlabel("Jour")
+    ax.set_ylabel("Coût (g)")
+    ax.set_title(f"Processus transpiration")
+    ax.legend()
+
+    ax = day_axes[4, 1]
+    x = day_data["time"]      
+    ax.plot(x, day_data["cost_maintenance_sugar"], label="Sucre")       
+    ax.set_xlabel("Jour")
+    ax.set_ylabel("Coût (g)")
+    ax.set_title(f"Processus maintenance")
+    ax.legend()
+
+    ax = day_axes[4, 2]
+    x = day_data["time"]      
+    ax.plot(x, day_data["cost_extension_sugar"], label="Sucre")
+    ax.plot(x, day_data["cost_extension_water"], label="Eau")
+    ax.plot(x, day_data["cost_extension_nutrient"], label="Nutriments")       
+    ax.set_xlabel("Jour")
+    ax.set_ylabel("Coût (g)")
+    ax.set_title(f"Processus extension")
+    ax.legend()
+
+    ax = day_axes[4, 3]
+    x = day_data["time"]      
+    ax.plot(x, day_data["cost_reproduction_sugar"], label="Sucre")
+    ax.plot(x, day_data["cost_reproduction_water"], label="Eau")
+    ax.plot(x, day_data["cost_reproduction_nutrient"], label="Nutriments")       
+    ax.set_xlabel("Jour")
+    ax.set_ylabel("Coût (g)")
+    ax.set_title(f"Processus reproduction")
+    ax.legend()
+
 
     day_fig.tight_layout()
     plt.show()
@@ -391,4 +431,4 @@ def simulate_and_plot():
     #plt.show()
 
 if __name__ == "__main__":
-    simulate_and_plot()
+    simulate_and_plot("perennial herbaceous")

@@ -4,8 +4,8 @@ import math
 
 #Environnement initial
 Environment = {
-    "soil":    {"water": 2000000.0, "nutrient": 5000000.0},
-    "litter":  {"absorp": 20000.0, "photo": 500.0, "support": 500.0},
+    "soil":    {"water": 1000000.0, "nutrient": 5000000.0},
+    "litter":  {"necromass": 0.0, "repro":0.0},
     "atmos":   {"Co2": 1000.0, "light": 1000.0, "water": 100.0, "temperature": 25.0},
     # -------------------------
     # 1) Paramètres de base
@@ -17,8 +17,8 @@ Environment = {
     "base_light":           800.0, # luminosité max (p. ex. W/m²) en plein été
     "seasonal_light_var":   0.5,    # en hiver, la luminosité max ~ base_light * (1 - seasonal_light_var)
 
-    "precipitation_base":   3.0,    # mm (ou g eau/m²) par jour, en moyenne
-    "seasonal_rain_var":    0.5,    # +/- 50% selon la saison
+    "precipitation_base":   1.0,    # mm (ou g eau/m²) par jour, en moyenne
+    "seasonal_rain_var":    0.8,    # +/- 50% selon la saison
     "random_factor":        0.3    # intensité du facteur aléatoire (30%)
 }
 

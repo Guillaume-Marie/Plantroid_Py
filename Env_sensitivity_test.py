@@ -12,6 +12,7 @@ import time_loop as Ti
 import history_def as Hi
 
 def run_simulation_with_modified_env(
+    species_name="Ble",
     water_initial=None, 
     base_temp=None, 
     base_light=None
@@ -34,6 +35,8 @@ def run_simulation_with_modified_env(
     # Réinitialise l’historique
     for k in Hi.history:
         Hi.history[k].clear()
+    
+    Pl.set_plant_species(Pl.Plant, species_name, Pl.species_db)
 
     # Copie locale
     local_env   = copy.deepcopy(Ev.Environment)
@@ -66,6 +69,7 @@ def run_simulation_with_modified_env(
 def run_replicates_for_gradient(
     param_values,
     nb_rep=5,
+    species_names = "Ble",
     mode="water"
 ):
     """
@@ -104,11 +108,11 @@ def run_replicates_for_gradient(
 
         for _ in range(nb_rep):
             if mode=="water":
-                final_plant, _ = run_simulation_with_modified_env(water_initial=val)
+                final_plant, _ = run_simulation_with_modified_env(water_initial=val, species_names=species_names)
             elif mode=="temp":
-                final_plant, _ = run_simulation_with_modified_env(base_temp=val)
+                final_plant, _ = run_simulation_with_modified_env(base_temp=val, species_names=species_names)
             elif mode=="light":
-                final_plant, _ = run_simulation_with_modified_env(base_light=val)
+                final_plant, _ = run_simulation_with_modified_env(base_light=val, species_names=species_names)
             else:
                 raise ValueError("Mode inconnu !")
 
@@ -143,7 +147,7 @@ def run_replicates_for_gradient(
     }
 
 
-def test_3_gradients_nb_rep(nb_rep=5):
+def test_3_gradients_nb_rep(species_name, nb_rep=5):
     """
     Fait varier 3 gradients :
      1) Eau initiale
@@ -153,14 +157,14 @@ def test_3_gradients_nb_rep(nb_rep=5):
     puis affiche le tout dans UNE seule figure (3 subplots).
     """
     # 1. Définition des gradients
-    water_values = [5e5, 1e6, 2e6, 3e6, 4e6, 5e6]
-    temp_values  = [5, 10, 15, 20, 25, 30, 35]
-    light_values = [400, 600, 800, 1000, 1200, 1500]
+    water_values = [1e5,2e5,3e5,4e5,5e5, 1e6, 2e6]
+    temp_values  = [0,2,3, 5, 7,10,11, 13,15]
+    light_values = [100,200,400, 600, 800, 1000, 1200, 1500]
 
     # 2. Récupère les stats min/mean/max
-    water_stats = run_replicates_for_gradient(water_values, nb_rep=nb_rep, mode="water")
-    temp_stats  = run_replicates_for_gradient(temp_values,  nb_rep=nb_rep, mode="temp")
-    light_stats = run_replicates_for_gradient(light_values, nb_rep=nb_rep, mode="light")
+    water_stats = run_replicates_for_gradient(water_values, nb_rep=nb_rep,species_name=species_name, mode="water")
+    temp_stats  = run_replicates_for_gradient(temp_values,  nb_rep=nb_rep,species_name=species_name, mode="temp")
+    light_stats = run_replicates_for_gradient(light_values, nb_rep=nb_rep,species_name=species_name, mode="light")
 
     # 3. Création de la figure et des 3 sous‐graphes
     fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(18, 5))
@@ -223,4 +227,4 @@ def test_3_gradients_nb_rep(nb_rep=5):
 
 if __name__ == "__main__":
     # On peut ajuster le nb_rep pour plus ou moins de répétitions
-    test_3_gradients_nb_rep(nb_rep=20)
+    test_3_gradients_nb_rep("Ble", nb_rep=20)

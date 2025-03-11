@@ -4,7 +4,7 @@
 
 # Variables et constantes globales :
 time = 0  # temps (unité discrète)
-max_cycles = 24*210
+max_cycles = 24*4000
 DT = 3600 # pas de temps en secondes
 delta_adapt = 0.0000015 * DT # vitesse d'evolution des paramètre par DT 0.000001389
 N = 24

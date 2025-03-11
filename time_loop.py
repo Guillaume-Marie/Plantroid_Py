@@ -26,6 +26,7 @@ def run_simulation_collect_data(max_cycles):
     time = 0  # réinitialisation
     time_for_reproduction = False
     time_for_dessication = False
+    time_for_making_reserve = False
 
     # Variables pour suivre la température minimale quotidienne
     daily_min_temps = []
@@ -44,14 +45,19 @@ def run_simulation_collect_data(max_cycles):
         hour_in_day = time % 24
         day_index   = time // 24  # numéro du jour en cours
 
-        #print("day:", day_index)
-
         # 1. Environnement 
         Ev.update_environment(time, Ev.Environment)
         # -- Mise à jour de la température minimale quotidienne --
         # 1) Si on vient de changer de jour => on remet day_min_temp à inf
         if day_index != previous_day_index:
+            #print("day:", day_index)  
+            #print("time_for_making_reserve:",time_for_making_reserve)
+            #print("time_for_reproduction:",time_for_reproduction)
+            #print("time_for_dessication:",time_for_dessication)
+            #print("is_dormancy:",Pl.Plant["is_dormancy"])
             day_min_temp = float('inf')
+            # reset stomatal conductance everyday
+            Pl.Plant["stomatal_conductance"] = 1.0
             previous_day_index = day_index
 
         # 2) Mettre à jour la valeur min au fur et à mesure
@@ -68,12 +74,13 @@ def run_simulation_collect_data(max_cycles):
                 daily_min_temps.pop(0)
 
             # Vérifier si la plante est déjà germée
-            if not Pl.Plant["germinated"]:
+            if not Pl.Plant["germinated"] or Pl.Plant["is_dormancy"] :
                 # Si on a au moins 7 jours, vérifier si toutes > 10°C
                 if len(daily_min_temps) >= 3:
                     last_7 = daily_min_temps[-3:]  # on prend les 7 dernières
                     if all(t > 3.0 for t in last_7):
                         Pl.Plant["germinated"] = True
+                        Pl.Plant["is_dormancy"] = False
                         # Optionnel: print("Germination déclenchée le jour", day_index)
 
 
@@ -115,14 +122,36 @@ def run_simulation_collect_data(max_cycles):
         #Ev.Environment_hazards(Pl.Plant, Ev.Environment)
 
         #print("photoperiod : ",Ev.calc_daily_photoperiod(day_index))
-        if (Ev.calc_daily_photoperiod(day_index) < Ev.calc_daily_photoperiod(day_index-1) or
-            Pl.Plant["biomass"]["repro"] > Pl.Plant["biomass_total"]):
-            time_for_dessication = True
+        if Ev.calc_daily_photoperiod(day_index) < Ev.calc_daily_photoperiod(day_index-1):            
+                if Pl.Plant["growth_type"] != "biannual":
+                    if ( Ev.calc_daily_photoperiod(day_index) < Pl.Plant["photoperiod_for_repro"] 
+                        and Pl.Plant["growth_type"] == "perennial"):
+                        time_for_dessication = True  
+                    elif Pl.Plant["growth_type"] != "perennial":
+                        time_for_dessication = True 
+                else:
+                    time_for_making_reserve = True 
 
-        if Ev.calc_daily_photoperiod(day_index) > 15.5:
-            time_for_reproduction = True
+        if Ev.calc_daily_photoperiod(day_index) > Pl.Plant["photoperiod_for_repro"]:
+            if day_index > 365 and Pl.Plant["growth_type"] == "biannual":
+                time_for_reproduction = True               
+                time_for_dessication = True
+            elif Pl.Plant["growth_type"] != "biannual":
+                time_for_reproduction = True
 
-        Pl.Plant["stomatal_conductance"] = 1.0
+        if Ev.calc_daily_photoperiod(day_index) < Pl.Plant["photoperiod_for_repro"]:
+            if Pl.Plant["growth_type"] != "biannual":
+                time_for_reproduction = False
+                Pl.Plant["ratio_allocation"]["repro"] = 0.0
+                Fu.check_allocation(Pl.Plant)
+
+        if Pl.Plant["biomass"]["photo"] < 0.001 and time_for_dessication:
+                time_for_dessication = False
+                Pl.Plant["is_dormancy"] = True   
+                Pl.Plant["ratio_allocation"]["photo"] = 0.55
+                Pl.Plant["ratio_allocation"]["absorb"] = 0.35
+                Pl.Plant["ratio_allocation"]["support"] = 0.1                
+                Fu.check_allocation(Pl.Plant)
 
         # 2. Calcul des coûts
         Fu.photosynthesis(Pl.Plant, Ev.Environment)
@@ -148,26 +177,29 @@ def run_simulation_collect_data(max_cycles):
 
         if Ev.Environment["atmos"]["light"] > 0.0:
             # 6. Reproduction
-            if time_for_reproduction:
-                if time_for_dessication: 
-                    Fu.dessication(Pl.Plant, Ev.Environment)
+            if time_for_reproduction and not Pl.Plant["is_dormancy"]:
                 Fu.handle_process(Pl.Plant, Ev.Environment, "reproduction")
                 Fu.update_success_history(Pl.Plant, "reproduction")
-            
-            if not time_for_dessication:
+                Fu.adapt_for_reproduction(Pl.Plant)
+
+            if time_for_dessication and not Pl.Plant["is_dormancy"]: 
+                    Fu.dessication(Pl.Plant, Ev.Environment)
+
+            if not time_for_dessication and not time_for_making_reserve and not Pl.Plant["is_dormancy"]:
                 #7. extension
                 Fu.handle_process(Pl.Plant, Ev.Environment, "extension")
                 Fu.update_success_history(Pl.Plant, "extension")  
                 # 9. Water stress adaptation
                 if Pl.Plant["adjusted_used"]["transpiration"]:
                     Fu.adapt_water_supply(Pl.Plant, Ev.Environment)
+
             # 8. Réserves
             Fu.refill_reserve(Pl.Plant, "sugar")
             Fu.refill_reserve(Pl.Plant, "water")
             Fu.refill_reserve(Pl.Plant, "nutrient")
 
         # 10. Mortalité
-        if Pl.Plant["biomass_total"] <= 0.0001: 
+        if Pl.Plant["biomass_total"] <= 0.005: 
             Pl.Plant["alive"] = False
 
         # 11. Sauvegarde historique
