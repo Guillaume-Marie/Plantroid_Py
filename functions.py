@@ -433,20 +433,20 @@ def adapt_water_supply(Plant, Env):
         #Plant["storage_fraction"]["water"]    += Gl.delta_adapt
         #Plant["storage_fraction"]["nutrient"] += Gl.delta_adapt
         if Plant["ratio_allocation"]["absorp"] <= 0.8:
-            Plant["ratio_allocation"]["support"]  -= max(Gl.delta_adapt/2, 0.0)
+            Plant["ratio_allocation"]["support"]  = max(Plant["ratio_allocation"]["support"]-Gl.delta_adapt/2, 0.0)
             Plant["ratio_allocation"]["absorp"]   += Gl.delta_adapt
-            Plant["ratio_allocation"]["photo"]    -= max(Gl.delta_adapt/2, 0.0)
+            Plant["ratio_allocation"]["photo"]    = max(Plant["ratio_allocation"]["photo"]-Gl.delta_adapt/2, 0.0)
     elif Plant["transp_limit_pool"]== "support":
         if Plant["ratio_allocation"]["support"] <= 0.8:
             Plant["ratio_allocation"]["support"]  += Gl.delta_adapt
-            Plant["ratio_allocation"]["absorp"]   -= max(Gl.delta_adapt/2, 0.0)
-            Plant["ratio_allocation"]["photo"]    -= max(Gl.delta_adapt/2 , 0.0)   
+            Plant["ratio_allocation"]["absorp"]   = max(Plant["ratio_allocation"]["absorp"]-Gl.delta_adapt/2, 0.0)
+            Plant["ratio_allocation"]["photo"]    = max(Plant["ratio_allocation"]["photo"]-Gl.delta_adapt/2 , 0.0)   
     elif Plant["transp_limit_pool"]== "photo":
         #Plant["storage_fraction"]["sugar"] += Gl.delta_adapt
         if Plant["ratio_allocation"]["photo"] <= 0.8:
-            Plant["ratio_allocation"]["support"] -= max(Gl.delta_adapt/2, 0.0)
+            Plant["ratio_allocation"]["support"] = max(Plant["ratio_allocation"]["support"]-Gl.delta_adapt/2, 0.0)
             Plant["ratio_allocation"]["photo"]   += Gl.delta_adapt
-            Plant["ratio_allocation"]["absorp"]  -= max(Gl.delta_adapt/2, 0.0)
+            Plant["ratio_allocation"]["absorp"]  = max(Plant["ratio_allocation"]["absorp"]-Gl.delta_adapt/2, 0.0)
         adapt_leaf_structure(Plant, Env)
     check_allocation(Plant)
 
