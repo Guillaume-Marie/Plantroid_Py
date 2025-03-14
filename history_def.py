@@ -3,7 +3,6 @@
 history = {
     "time": [],
     # Biomasses
-    "cost_transpiration_water":[],
     "biomass_total": [],
     "biomass_support": [],
     "biomass_photo":   [],
@@ -26,16 +25,10 @@ history = {
     # Stomates / T
     "stomatal_conductance": [],
     "atmos_temperature": [],
-    "leaf_temperature_before": [],
     "leaf_temperature_after": [],   
     # Success cycles
     "success_extension": [],
     "success_reproduction": [],
-    # Flux_in intermédiaires (après transp / photo)
-    "water_after_transp": [],
-    "sugar_photo": [],
-    # NOUVELLES variables de diagnostic
-    "transpiration_cooling": [],
     "max_transpiration_capacity": [],
     "raw_sugar_flux": [],
     "pot_sugar": [],
@@ -96,19 +89,15 @@ def history_update(Plant, history, Environment, time):
         # eau sol
         history["soil_water"].append(Environment["soil"]["water"])
         # stomates / T
-        history["stomatal_conductance"].append(Plant["diag"]["stomatal_conductance"])
-        history["atmos_temperature"].append(Plant["diag"]["atmos_temperature"])
-        history["leaf_temperature_after"].append(Plant["diag"]["leaf_temperature_after"])
-        history["leaf_temperature_before"].append(Plant["diag"]["leaf_temperature_before"])
+        history["stomatal_conductance"].append(Plant["stomatal_conductance"])
+        history["atmos_temperature"].append(Environment["atmos"]["temperature"])
+        history["leaf_temperature_after"].append(Plant["temperature"]["photo"] )
         # succès
         history["success_extension"].append(Plant["success_cycle"]["extension"])
         history["success_reproduction"].append(Plant["success_cycle"]["reproduction"])
         # flux_in spéciaux
-        history["water_after_transp"].append(Plant["diag"]["water_after_transp"])
-        history["sugar_photo"].append(Plant["diag"]["sugar_photo"])
         # nouveaux diagnostics
-        history["transpiration_cooling"].append(Plant["diag"].get("trans_cooling", 0.0))
-        history["max_transpiration_capacity"].append(Plant["diag"].get("max_transpiration_capacity", 0.0))
+        history["max_transpiration_capacity"].append(Plant["max_transpiration_capacity"])
         history["raw_sugar_flux"].append(Plant["diag"].get("raw_sugar_flux", 0.0))
         history["pot_sugar"].append(Plant["diag"].get("pot_sugar", 0.0))
         history["atmos_light"].append(Environment["atmos"]["light"])

@@ -1,5 +1,7 @@
 import global_constants as Gl
 import Environnement_def as Ev
+import global_constants as Gl
+import numpy as np
 
 #######################################
 #         FONCTIONS DE SANTÉ          #
@@ -43,11 +45,6 @@ def destroy_biomass(Plant, Env, which_biomass, damage_factor=None):
     else: 
         Plant["biomass"]["necromass"] += lost
 
-    # (Optionnel) On augmente la litière de l'environnement
-    #Env["litter"][which_biomass] += lost
-
-    # Rendu d'une partie de l'eau/nutriments dans les reserve,
-    # ou dans la reserve interne de la plante (au choix).
     # Ici, on choisit de les renvoyer au sol en simplifiant un ratio arbitraire :
     #Plant["reserve"]["water"]    += lost / Plant["cost_params"]["extension"][which_biomass]["water"]
     #Plant["reserve"]["nutrient"] += lost / Plant["cost_params"]["extension"][which_biomass]["nutrient"]
@@ -84,11 +81,12 @@ def photosynthesis(Plant, Env):
     Photosynthèse : production de sucre (flux_in["sugar"]).
     On enregistre aussi des variables pour l'affichage détaillé.
     """
+    cos_theta = np.cos(Plant["leaf_angle"])
+    if cos_theta < 0:
+        cos_theta = 0.0
+    absorbed_solar = Env["atmos"]["light"] * cos_theta * (1.0 - 0.25)
     # 1) fraction de la puissance lumineuse interceptée J/s/gleaf
-    power_absorbed = (Env["atmos"]["light"] * 
-                      Plant["sla_max"] * 
-                      Plant["slai"] *
-                      Plant["light_absorption_coeff"])
+    power_absorbed = absorbed_solar * Plant["sla_max"] * Plant["slai"] 
     
     # Facteur limitant selon la température
     temp_diff = abs(Plant["temperature"]["photo"] - Plant["T_optim"])
@@ -133,6 +131,24 @@ def compute_stomatal_area(Plant):
                         Plant["slai"])
     return stomatal_factor
 
+def compute_stomatal_conductance_max(Plant):
+    """
+    Calcule la conductance stomatique maximale (en m/s, très simplifiée),
+    à partir de la fraction de surface porale et d'hypothèses
+    sur la diffusion et la profondeur des stomates.
+
+    Retourne un float (m s^-1).
+    """
+    # 1) On récupère la fraction d'aire de pores (dimensionless) 
+    #    depuis compute_stomatal_area(Plant).
+    #    Par exemple, si compute_stomatal_area = 0.01, 
+    #    ça veut dire 1% de la surface foliaire est 'ouverte'.
+    area_fraction = compute_stomatal_area(Plant)
+    # 4) Formule simplifiée
+    g_stomatal_max = area_fraction * (Gl.D_H2O / Gl.pore_depth)
+
+    return g_stomatal_max
+
 def compute_root_explored_volume(Plant):
     """
     Calcule le volume de sol exploré par les racines en fonction de la biomasse racinaire.
@@ -161,9 +177,8 @@ def compute_max_transpiration_capacity(Plant, Env):
     - eau disponible dans le sol
     """
     # 1) Calcul des capacités individuelles
-    photo_capacity = (compute_stomatal_area(Plant) * 
-                      Gl.D_H2O * Gl.VPD *
-                      Plant["stomatal_conductance"] * Gl.DT)
+    gs = compute_stomatal_conductance_max(Plant) * Plant["stomatal_conductance"] 
+    photo_capacity = gs * Gl.D_H2O * Gl.VPD * Gl.DT
     support_capacity = (Plant["biomass"]["support"]
                         * Plant["support_transport_coeff"]* Gl.DT)
     soil_capacity = compute_available_water(Plant, Env)
@@ -183,129 +198,13 @@ def compute_max_transpiration_capacity(Plant, Env):
     Plant["max_transpiration_capacity"] = min_capacity
     Plant["transp_limit_pool"] = limiting_pool
 
-def find_transpiration_for_cooling(Plant, Env):
-    """
-    Besoin d’eau (trans_cooling) pour évacuer la puissance reçue en excès
-    sous forme de chaleur latente.
-    """
-    T_leaf = Plant["temperature"]["photo"]
-    T_air  = Env["atmos"]["temperature"]
-
-    # Si la feuille est plus froide ou égale, on ne transpire pas pour le froid.
-    if T_leaf < T_air and Env["atmos"]["light"] <= 0.0:
-        return 0.0
-
-    # calcul d'une puissance absorbée
-    power_absorbed = (Env["atmos"]["light"] * 
-                      Plant["sla_max"] * 
-                      Plant["slai"] * 
-                      Plant["light_absorption_coeff"] *
-                      0.5)
-    power_sensible = Gl.K * (T_leaf - T_air) # J/s
-    power_evap = power_absorbed #+ power_sensible  # J/s
-    flux_water = power_evap / Gl.LATENT_HEAT_VAPORIZATION  # gH2O/s
-    if flux_water < 0:
-        flux_water = 0
-    return flux_water * Plant["biomass"]["photo"] * Gl.DT
-
-def transpiration_cost(Plant, Env):
-    """
-    Calcul du besoin total en eau (refroidissement + photosynthèse),
-    sous la limite de la capacité max de transpiration.
-    On enregistre également des diagnostics pour le suivi.
-    """
-    compute_max_transpiration_capacity(Plant, Env)
-    Plant["trans_cooling"] = find_transpiration_for_cooling(Plant, Env)
-    # On définit flux_in["water"] comme la capacité max (on suppose l'absorption tentée)
-    Plant["cost"]["transpiration"]["water"] += Plant["trans_cooling"]
-    #print("Trans cost:",Plant["cost"]["transpiration"]["water"])
-    #print("Trans avail:",Plant["max_transpiration_capacity"])
-    if Plant["cost"]["transpiration"]["water"] > Plant["max_transpiration_capacity"]:
-        Plant["flux_in"]["water"] = Plant["max_transpiration_capacity"]
-    else:
-        Plant["flux_in"]["water"] = Plant["cost"]["transpiration"]["water"] 
-    Plant["diag"]["max_transpiration_capacity"] = Plant["max_transpiration_capacity"] 
-    Plant["max_transpiration_capacity"] -= Plant["flux_in"]["water"] 
-    #print("Trans flux in:",Plant["flux_in"]["water"])
-    # Sauvegarde dans diag
-    Plant["diag"]["trans_cooling"] = Plant["trans_cooling"]
-
-
-def adjust_stomatal_conductance(Plant, Env):
-    """
-    Ajuste la conductance stomatique pour rester dans la capacité de transpiration.
-    """
-    delta = Plant["cost"]["transpiration"]["water"] - Plant["flux_in"]["water"]
-    #print("Ajust Gs cost:",Plant["flux_in"]["water"])
-    #print("Ajust Gs cost:",Plant["cost"]["transpiration"]["water"])
-    #print("delta:",delta)
-    while delta > 0.0 and Plant["stomatal_conductance"] != Plant["stomatal_conductance_min"]:  
-        Plant["stomatal_conductance"] -= Gl.delta_adapt
-        if Plant["stomatal_conductance"] < Plant["stomatal_conductance_min"]:
-            Plant["stomatal_conductance"] = Plant["stomatal_conductance_min"]
-        Plant["light_absorption_coeff"] -= Gl.delta_adapt
-        if Plant["light_absorption_coeff"] <= 0.01:
-            Plant["light_absorption_coeff"] = 0.01
-        photosynthesis(Plant, Env)
-        transpiration_cost(Plant, Env)
-        #print("Ajust Gs cost:",Plant["cost"]["transpiration"]["water"])
-        #print("Ajust Gs cost:",Plant["flux_in"]["water"])
-        delta = Plant["cost"]["transpiration"]["water"] - Plant["flux_in"]["water"]
-
-
-def adjust_leaf_temperature(Plant, Env):
-    """
-    Met à jour la température foliaire en fonction du bilan
-    entre la puissance absorbée, l'évaporation et la convection.
-    """
-    #print("Ajust T cost:", Plant["trans_cooling"])
-    power_absorbed = Env["atmos"]["light"] * Plant["sla_max"] *  \
-                        Plant["slai"] * Plant["light_absorption_coeff"] * 0.5
-    power_evap = (Plant["trans_cooling"] / max(Plant["biomass"]["photo"],1e-9) / \
-                 Gl.DT) * Gl.LATENT_HEAT_VAPORIZATION
-    T_leaf = Plant["temperature"]["photo"]
-    T_air  = Env["atmos"]["temperature"]
-    Plant["diag"]["atmos_temperature"] = T_air
-    Plant["diag"]["leaf_temperature_before"] = T_leaf
-    power_sensible = Gl.K * (T_leaf - T_air)
-
-    dE = power_absorbed - power_evap #+ power_sensible  # J/s
-    if abs(dE) < 1e-9:
-        dE = 0.0
-
-    heat_capacity = Gl.SPECIFIC_HEAT_LEAF * Plant["biomass"]["photo"]  # J/°C
-    if heat_capacity < 1e-9:
-        heat_capacity = 1e-9
-    #print("dE:", dE)
-    #print("power_absorbed:",power_absorbed)
-    #print("power_evap :",power_evap)
-    #print("power_sensible:",power_sensible)
-    dT = (dE * Gl.DT) / heat_capacity
-    #print("dT:", dT)
-
-    Plant["temperature"]["photo"] += dT
-
-    if Plant["temperature"]["photo"] < T_air or power_absorbed <= 0.0 :
-        Plant["temperature"]["photo"] = T_air
-
-    Plant["diag"]["leaf_temperature_after"] = T_leaf
-    if Plant["temperature"]["photo"] > 45:
-        destroy_biomass(Plant, Env, "photo", Gl.delta_adapt)
-
-
 ##############################################
 #   GESTION DES SUCCÈS/ÉCHECS DE PROCESSUS   #
 ##############################################
 
 def post_process_success(Plant, Env, process):
-    if process == "transpiration":        
+    if process == "maintenance":        
         pay_cost(Plant, Env, process)
-        #print("cost:",Plant["cost"]["transpiration"]["water"])
-        #print("avail:",Plant["flux_in"]["water"])
-        pass
-    elif process == "maintenance":        
-        pay_cost(Plant, Env, process)
-        pass
     elif process == "extension":
         allocate_biomass(Plant, Plant["new_biomass"])
         pay_cost(Plant, Env, process)
@@ -316,15 +215,9 @@ def post_process_success(Plant, Env, process):
         restore_health(Plant)
 
 def post_process_resist(Plant, Env, process):
-    if process == "transpiration":         
+    if process == "maintenance":
         pay_cost(Plant, Env, process)
-        destroy_biomass(Plant, Env, "photo", Gl.delta_adapt)
-    elif process == "maintenance":
-        pay_cost(Plant, Env, process)
-        if Plant["phenology_stage"] == "dormancy":
-            destroy_biomass(Plant, Env, "support",Gl.delta_adapt/10)
-            destroy_biomass(Plant, Env, "repro", Gl.delta_adapt)
-            destroy_biomass(Plant, Env, "necromass", Gl.delta_adapt)
+        destroy_biomass(Plant, Env, "support",Plant["support_turnover"])
     elif process == "extension":
         allocate_biomass(Plant, Plant["new_biomass"])
         pay_cost(Plant, Env, process)
@@ -337,18 +230,11 @@ def post_process_resist(Plant, Env, process):
         restore_health(Plant)
 
 def post_process_fail(Plant, Env, process):
-    if process == "transpiration": 
-        pay_cost(Plant, Env, process)
-        #destroy_biomass(Plant, Env, "support")
-        destroy_biomass(Plant, Env, "photo", Gl.delta_adapt)
-        degrade_health_state(Plant)
-        #print("degrade health due to",process)
-    elif process == "maintenance":
+    if process == "maintenance":
         pay_cost(Plant, Env, process)
         degrade_health_state(Plant)
-        destroy_biomass(Plant, Env, "support", Gl.delta_adapt)
+        destroy_biomass(Plant, Env, "support",Plant["support_turnover"])
         destroy_biomass(Plant, Env, "absorp", Gl.delta_adapt)
-        #print("degrade health due to",process)
     elif process == "extension":
         adjust_success_cycle(Plant, "extension")
         if Plant["success_cycle"]["extension"] > 0:
@@ -374,74 +260,55 @@ def handle_process(Plant, Env, process):
         update_stress_history(Plant, process)
         post_process_success(Plant, Env, process)
         return
-
+    
     draw_from_reserves(Plant, process)
     if resources_available(Plant, process):
         update_stress_history(Plant, process)
         post_process_resist(Plant, Env, process)
         return
-
-    update_stress_history(Plant, process)
+    
     adjust_cost(Plant, Env, process)
-    post_process_fail(Plant, Env, process)
+    update_stress_history(Plant, process)
+    if resources_available(Plant, process):
+        post_process_resist(Plant, Env, process)
+    else:
+        post_process_fail(Plant, Env, process)  
 
 def resources_available(Plant, process):
     """
     Vérifie la disponibilité des ressources pour chaque process.
     """
-    if process != "transpiration":
-        if (Plant["flux_in"]["sugar"]    >= Plant["cost"][process]["sugar"] and
-            Plant["max_transpiration_capacity"] >= Plant["cost"][process]["water"] and
-            Plant["flux_in"]["nutrient"] >= Plant["cost"][process]["nutrient"]):
-            return True
-        else:
-            return False
+
+    if (Plant["flux_in"]["sugar"] >= Plant["cost"][process]["sugar"]) :
+        return True
     else:
-        if(Plant["flux_in"]["water"] >= Plant["cost"][process]["water"]):
-            return True
-        else:
-            return False
+        return False
 
 
 def pay_cost(Plant, Env, process):
     """
     Soustrait le coût en ressources ou en flux.
     """
-    if process != "transpiration":
-        Plant["max_transpiration_capacity"] -= Plant["cost"][process]["water"]
-        Plant["reserve"]["water"] += Plant["cost"][process]["water"]
+    if process != "maintenance":
         Plant["flux_in"]["sugar"] -= Plant["cost"][process]["sugar"]
-        Plant["flux_in"]["nutrient"] -= Plant["cost"][process]["nutrient"]      
+        Plant["flux_in"]["nutrient"] -= Plant["cost"][process]["nutrient"]   
     else:
-        residual = Plant["flux_in"]["water"] - Plant["cost"][process]["water"]
-        if residual >= 0:
-            adjust_leaf_temperature(Plant, Ev.Environment)
-            Plant["flux_in"]["water"] -= Plant["cost"][process]["water"] 
-            Env["soil"]["water"] -= Plant["flux_in"]["water"]
-        else:
-            adjust_leaf_temperature(Plant, Ev.Environment)
-            Env["soil"]["water"] -= Plant["flux_in"]["water"]
-            Plant["flux_in"]["water"] = 0
+        Plant["flux_in"]["sugar"] -= Plant["cost"][process]["sugar"]  
+
 
 
 def calculate_cost(Plant, Env, process):
     """
     Calcule le coût en ressources (en g).
     """
-    if process == "transpiration":
-        transpiration_cost(Plant, Env)
-    elif process == "reproduction":
-            for r in Gl.resource:
-                cost_factor = Plant["cost_params"][process]["unique"][r]
-                Plant["cost"][process][r] = cost_factor * Plant["biomass"]["necromass"]        
+    if process == "reproduction":
+        for r in Gl.resource:
+            cost_factor = Plant["cost_params"][process]["unique"][r]
+            Plant["cost"][process][r] = cost_factor * Plant["new_biomass"]
     elif process == "maintenance":
-            if Plant["phenology_stage"] != "dormancy":
-                cost_factor = Plant["cost_params"][process]["unique"]["sugar"]
-            else:
-                cost_factor = Plant["cost_params"][process]["unique"]["sugar"]/4
-            # Coût proportionnel à la biomasse totale et au temps
-            Plant["cost"][process]["sugar"] = cost_factor *  \
-                                        Plant["biomass_total"] * Gl.DT
+        cost_factor = Plant["cost_params"][process]["unique"]["sugar"]
+        # Coût proportionnel à la biomasse totale et au temps
+        Plant["cost"][process]["sugar"] = cost_factor * Gl.DT * Plant["biomass_total"]
     else: # extension
         for bf in Gl.biomass_function:
             for r in Gl.resource:
@@ -454,9 +321,7 @@ def adjust_cost(Plant, Env, process):
     Ajuste le coût si les ressources ou la capacité sont insuffisantes.  
     """    
     Plant["adjusted_used"][process] = True
-    if process == "transpiration":
-        adjust_stomatal_conductance(Plant, Env)
-    elif process == "extension":
+    if process == "extension":
         # EXTENSION
         limiting_bio = Plant["new_biomass"]
         for bf in Gl.biomass_function:
@@ -473,21 +338,21 @@ def adjust_cost(Plant, Env, process):
             for r in Gl.resource:
                 cost_factor = Plant["cost_params"]["extension"][bf].get(r, 0.0)
                 Plant["cost"][process][r] = cost_factor * Plant["new_biomass"]
-    else:
-        if process in ["maintenance", "reproduction"]:
-            limiting_bio = float('inf')
-            for r in Gl.resource:
-                denom = Plant["cost_params"][process]["unique"].get(r, 1e-12)
-                if denom > 0:
-                    max_bio = Plant["flux_in"][r] / denom
-                    if max_bio < limiting_bio:
-                        limiting_bio = max_bio
-            if limiting_bio < Plant["new_biomass"]:
-                Plant["new_biomass"] = limiting_bio
-            for r in Gl.resource:
-                cost_factor = Plant["cost_params"][process]["unique"].get(r, 0.0)
-                Plant["cost"][process][r] = cost_factor * limiting_bio
-
+    elif process =="reproduction":
+        limiting_bio = float('inf')
+        for r in Gl.resource:
+            denom = Plant["cost_params"][process]["unique"].get(r, 1e-12)
+            if denom > 0:
+                max_bio = Plant["flux_in"][r] / denom
+                if max_bio < limiting_bio:
+                    limiting_bio = max_bio
+        if limiting_bio < Plant["new_biomass"]:
+            Plant["new_biomass"] = limiting_bio
+        for r in Gl.resource:
+            cost_factor = Plant["cost_params"][process]["unique"].get(r, 0.0)
+            Plant["cost"][process][r] = cost_factor * limiting_bio
+    elif process =="maintenance":
+            pass
 
 def draw_from_reserves(Plant, process):
     """
@@ -495,10 +360,6 @@ def draw_from_reserves(Plant, process):
     """
     for r in Gl.resource:
         shortfall = Plant["cost"][process][r] - Plant["flux_in"][r]
-        #if process == "extension":
-        #    print("shortfal:",shortfall, "for :", r," in process :", process)
-        #print("cost:",Plant["cost"][process][r])
-        #print("avail:",Plant["flux_in"][r])
         if shortfall > 0 and Plant["reserve"][r] > 0:
             transfer = min(shortfall, Plant["reserve"][r])
             Plant["reserve"][r] -= transfer
@@ -568,6 +429,7 @@ def adapt_water_supply(Plant, Env):
     """
     Réallocation de la biomasse en cas de stress eau/sucre chroniques.
     """
+    #print(Plant["transp_limit_pool"])
     if Plant["transp_limit_pool"]== "soil":
         #Plant["storage_fraction"]["water"]    += Gl.delta_adapt
         #Plant["storage_fraction"]["nutrient"] += Gl.delta_adapt
@@ -616,9 +478,14 @@ def dessication(Plant, Env):
     Réallocation de la biomasse en cas de stress eau/sucre chroniques.
     """
     if Plant["growth_type"] == "annual" or Plant["growth_type"] == "biannual":
-        destroy_biomass(Plant, Env, "support", Plant["dessication_rate"])
-    destroy_biomass(Plant, Env, "absorp", Plant["dessication_rate"]/2)
+        destroy_biomass(Plant, Env, "support",Plant["dessication_rate"])
+    elif Plant["growth_type"] == "perennial":
+        destroy_biomass(Plant, Env, "support",Plant["support_turnover"])
+
+    destroy_biomass(Plant, Env, "absorp", Plant["dessication_rate"])
     destroy_biomass(Plant, Env, "photo", Plant["dessication_rate"])
+    destroy_biomass(Plant, Env, "repro", Gl.delta_adapt)
+
 
 def update_biomass_total(Plant):
     """Recalcule la biomasse totale vivante."""
@@ -675,7 +542,7 @@ def manage_phenology(Plant, Env, day_index, daily_min_temps):
     # Germination (sortie de dormance)
     if  Plant["phenology_stage"] == "seed" or Plant["phenology_stage"] == "dormancy":
         if len(daily_min_temps) >= 7 and all(t > 3.0 for t in daily_min_temps[-7:]):
-            print("germination ! Day : ",day_index )
+            #print("germination ! Day : ",day_index )
             Plant["phenology_stage"] = "vegetative"
             return
         return

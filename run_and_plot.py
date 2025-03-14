@@ -132,11 +132,6 @@ def simulate_and_plot(species_name):
     # ------------------------------------------------------------------
     # Rangée 1
     # ------------------------------------------------------------------
-    day_axes[1,0].plot(day_data["time"], day_data["sugar_photo"], label="sugar_photo")
-    day_axes[1,0].set_xlabel("Jour")
-    day_axes[1,0].set_ylabel("Flux_in spéciaux (g)")
-    day_axes[1,0].set_title("Flux_in après transpiration / photo")
-    day_axes[1,0].legend()
 
     day_axes[1,1].plot(day_data["time"], day_data["reserve_sugar"], label="Sucre")
     day_axes[1,1].plot(day_data["time"], day_data["reserve_water"], label="Eau")
@@ -146,14 +141,7 @@ def simulate_and_plot(species_name):
     day_axes[1,1].set_title("Réserves internes")
     day_axes[1,1].legend()
 
-    day_axes[1,2].plot(day_data["time"], day_data["soil_water"], label="Soil water")
-    day_axes[1,2].set_xlabel("Jour")
-    day_axes[1,2].set_ylabel("Eau (g)")
-    day_axes[1,2].set_title("Eau dans le sol")
-    day_axes[1,2].legend()
-
     day_axes[1,3].plot(day_data["time"], day_data["atmos_temperature"], label="Tair")
-    day_axes[1,3].plot(day_data["time"], day_data["leaf_temperature_before"], label="Tbf")
     day_axes[1,3].plot(day_data["time"], day_data["leaf_temperature_after"], label="Taf") 
     day_axes[1,3].set_xlabel("Jour")
     day_axes[1,3].set_ylabel("Température (°C)")
@@ -178,7 +166,6 @@ def simulate_and_plot(species_name):
     day_axes[2,1].set_title("reserve_used (bool)")
     day_axes[2,1].legend()
 
-    day_axes[2,2].plot(day_data["time"], day_data["transpiration_cooling"], label="Cooling")
     day_axes[2,2].plot(day_data["time"], day_data["max_transpiration_capacity"], label="Max capacity")
     day_axes[2,2].set_xlabel("Jour")
     day_axes[2,2].set_ylabel("H2O (g/jour)")
@@ -230,7 +217,7 @@ def simulate_and_plot(species_name):
 
     ax = day_axes[4, 0]
     x = day_data["time"]      
-    ax.plot(x, day_data["cost_transpiration_water"], label="Eau")  
+    #ax.plot(x, day_data["cost_transpiration_water"], label="Eau")  
     ax.set_xlabel("Jour")
     ax.set_ylabel("Coût (g)")
     ax.set_title(f"Processus transpiration")
@@ -308,16 +295,11 @@ def simulate_and_plot(species_name):
     night_axes[1,1].set_title("Flux entrants (g)")
     night_axes[1,1].legend()
 
-    night_axes[1,2].plot(night_data["time"], night_data["water_after_transp"], label="water_after_transp")
-    night_axes[1,2].set_xlabel("Jour")
-    night_axes[1,2].set_ylabel("Flux sortants (g)")
-    night_axes[1,2].set_title("Flux sortants (g)")
-    night_axes[1,2].legend()
 
     # ------------------------------------------------------------------
     # Rangée 2
     # ------------------------------------------------------------------
-    night_axes[2,0].plot(night_data["time"], night_data["sugar_photo"], label="sugar_photo")
+    #night_axes[2,0].plot(night_data["time"], night_data["sugar_photo"], label="sugar_photo")
     night_axes[2,0].set_xlabel("Jour")
     night_axes[2,0].set_ylabel("Flux_in spéciaux (g)")
     night_axes[2,0].set_title("Flux_in après transpiration / photo")
@@ -330,18 +312,10 @@ def simulate_and_plot(species_name):
     night_axes[2,1].set_ylabel("Réserves (g)")
     night_axes[2,1].set_title("Réserves internes")
     night_axes[2,1].legend()
-
-    night_axes[2,2].plot(night_data["time"], night_data["soil_water"], label="Soil water")
-    night_axes[2,2].set_xlabel("Jour")
-    night_axes[2,2].set_ylabel("Eau (g)")
-    night_axes[2,2].set_title("Eau dans le sol")
-    night_axes[2,2].legend()
-
     # ------------------------------------------------------------------
     # Rangée 3 : Températures
     # ------------------------------------------------------------------
     night_axes[3,0].plot(night_data["time"], night_data["atmos_temperature"], label="Tair")
-    night_axes[3,0].plot(night_data["time"], night_data["leaf_temperature_before"], label="Tbf")
     night_axes[3,0].plot(night_data["time"], night_data["leaf_temperature_after"], label="Taf") 
     night_axes[3,0].set_xlabel("Jour")
     night_axes[3,0].set_ylabel("Température (°C)")
@@ -363,7 +337,6 @@ def simulate_and_plot(species_name):
     # ------------------------------------------------------------------
     # Rangée 4 : Transpiration / photosynthèse
     # ------------------------------------------------------------------
-    night_axes[4,0].plot(night_data["time"], night_data["transpiration_cooling"], label="Cooling")
     night_axes[4,0].plot(night_data["time"], night_data["max_transpiration_capacity"], label="Max capacity")
     night_axes[4,0].set_xlabel("Jour")
     night_axes[4,0].set_ylabel("H2O (g/jour)")
@@ -431,4 +404,4 @@ def simulate_and_plot(species_name):
     #plt.show()
 
 if __name__ == "__main__":
-    simulate_and_plot("perennial herbaceous")
+    simulate_and_plot("ble")

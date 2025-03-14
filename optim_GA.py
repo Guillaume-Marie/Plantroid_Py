@@ -85,8 +85,6 @@ def ga_multi_criteria_optimization(
         # Applique les paramètres
         plant_copy["r_max"] = individual["r_max"]
         plant_copy["alpha"] = individual["alpha"]
-        plant_copy["light_absorption_max"] = individual["light_absorption_max"]
-        plant_copy["stomatal_density"] = individual["stomatal_density"]
 
         # Sauvegarde l’état global
         original_plant = Pl.Plant
@@ -293,7 +291,7 @@ def ga_multi_criteria_optimization(
 
 if __name__ == "__main__":
     best_config, best_score = ga_multi_criteria_optimization(
-        species_name = "mais",
+        species_name = "ble",
         population_size=20,
         generations=20,
         crossover_rate=0.7,
@@ -309,4 +307,4 @@ if __name__ == "__main__":
         alpha_sugar=1.0,
         alpha_stability=0.0
     )
-    Rp.simulate_and_plot("mais")  
+    Rp.simulate_and_plot("ble")  

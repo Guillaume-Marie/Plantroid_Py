@@ -4,7 +4,7 @@ import math
 
 #Environnement initial
 Environment = {
-    "soil":    {"water": 1000000.0, "nutrient": 5000000.0},
+    "soil":    {"water": 250000000.0, "nutrient": 5000000.0},
     "litter":  {"necromass": 0.0, "repro":0.0},
     "atmos":   {"Co2": 1000.0, "light": 1000.0, "water": 100.0, "temperature": 25.0},
     # -------------------------
@@ -14,10 +14,10 @@ Environment = {
     "seasonal_temp_offset": 10.0,   # amplitude (°C) de la variation saisonnière
     "base_temp":            10.0,  # température moyenne annuelle (°C)
 
-    "base_light":           800.0, # luminosité max (p. ex. W/m²) en plein été
+    "base_light":           1000.0, # luminosité max (p. ex. W/m²) en plein été
     "seasonal_light_var":   0.5,    # en hiver, la luminosité max ~ base_light * (1 - seasonal_light_var)
 
-    "precipitation_base":   1.0,    # mm (ou g eau/m²) par jour, en moyenne
+    "precipitation_base":   1.9,    # mm (ou g eau/m²) par jour, en moyenne
     "seasonal_rain_var":    0.8,    # +/- 50% selon la saison
     "random_factor":        0.3    # intensité du facteur aléatoire (30%)
 }
@@ -121,8 +121,8 @@ def update_environment(time, Env):
         daily_rain = daily_rain_mean * (1.0 +  Environment["random_factor"] * (2.0*random.random() - 1.0))
         # on ajoute la pluie dans le sol (grand réservoir) 
         # Conversion mm -> g eau... c’est arbitraire, on peut rester cohérent
-        Env["soil"]["water"] += daily_rain * 1000.0  # x1000 si 1 mm = 1 L/m² ...
-        Env["rain_event"] = daily_rain * 1000.0
+        Env["soil"]["water"] += daily_rain * 1000.0  * 1000
+        Env["rain_event"] = daily_rain * 1000.0 * 1000
     else:
         # Pas de pluie à cette heure
         Env["rain_event"] = 0.0

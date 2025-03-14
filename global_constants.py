@@ -4,20 +4,27 @@
 
 # Variables et constantes globales :
 time = 0  # temps (unité discrète)
-max_cycles = 24*4000
+max_cycles = 24*220
 DT = 3600 # pas de temps en secondes
 delta_adapt = 0.0000015 * DT # vitesse d'evolution des paramètre par DT 0.000001389
 N = 24
 total_soil_volume = 1e7 # cm³ (hypothèse : 10 m³ de sol total dans l'environnement)
 D_H2O = 2.5e-5 # m²/s "coefficient de diffusion" simplifié.
 VPD = 11.2 # 
-
+# 3) Distance caractéristique L (m), ex. ~ 10 microns (10e-6 m)
+pore_depth = 1e-5  
+# Constantes physiques
+SIGMA      = 5.670374419e-8
+RHO_AIR    = 1.225
+CP_AIR     = 1005.0
+LAMBDA_VAP = 2.45e6
+R_GAS      = 8.314462618
+M_WATER    = 0.01801528
 
 # Conversion lumière -> sucres.
 # Voir explication dans le commentaire ci-dessus.
 k_root = 100 # cm³ de sol exploré par gramme de racine (à ajuster selon le type de sol)
 # Constantes utiles
-LATENT_HEAT_VAPORIZATION = 2450   # J par g d'eau (approx. ~ 2450 J/g)
 SPECIFIC_HEAT_LEAF       = 2.2    # J / (g·°C), chaleur massique feuilles
 RATIO_H2O_C6H12O6        = 0.6    # ratio de H2O utilisé pour formé un sucres
 K = 0.1  # W/°C par gFeuille (exemple)
