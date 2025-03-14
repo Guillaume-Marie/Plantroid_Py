@@ -3,6 +3,7 @@
 history = {
     "time": [],
     # Biomasses
+    "cost_transpiration_water":[],
     "biomass_total": [],
     "biomass_support": [],
     "biomass_photo":   [],

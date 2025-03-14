@@ -307,11 +307,11 @@ def post_process_success(Plant, Env, process):
         pay_cost(Plant, Env, process)
         pass
     elif process == "extension":
-        allocate_new_biomass(Plant)
+        allocate_biomass(Plant, Plant["new_biomass"])
         pay_cost(Plant, Env, process)
         restore_health(Plant)
     elif process == "reproduction":        
-        allocate_new_biomass(Plant)
+        allocate_biomass(Plant, Plant["new_biomass"])
         pay_cost(Plant, Env, process)
         restore_health(Plant)
 
@@ -321,17 +321,17 @@ def post_process_resist(Plant, Env, process):
         destroy_biomass(Plant, Env, "photo", Gl.delta_adapt)
     elif process == "maintenance":
         pay_cost(Plant, Env, process)
-        if Plant["is_dormancy"]:
+        if Plant["phenology_stage"] == "dormancy":
             destroy_biomass(Plant, Env, "support",Gl.delta_adapt/10)
             destroy_biomass(Plant, Env, "repro", Gl.delta_adapt)
             destroy_biomass(Plant, Env, "necromass", Gl.delta_adapt)
     elif process == "extension":
-        allocate_new_biomass(Plant)
+        allocate_biomass(Plant, Plant["new_biomass"])
         pay_cost(Plant, Env, process)
         adjust_success_cycle(Plant, "extension")
         restore_health(Plant)
     elif process == "reproduction":        
-        allocate_new_biomass(Plant)        
+        allocate_biomass(Plant, Plant["new_biomass"])        
         pay_cost(Plant, Env, process)
         adjust_success_cycle(Plant, "reproduction")
         restore_health(Plant)
@@ -353,12 +353,12 @@ def post_process_fail(Plant, Env, process):
         adjust_success_cycle(Plant, "extension")
         if Plant["success_cycle"]["extension"] > 0:
             pay_cost(Plant, Env, process)
-            allocate_new_biomass(Plant)
+            allocate_biomass(Plant, Plant["new_biomass"])
     elif process == "reproduction": 
         adjust_success_cycle(Plant, "reproduction")
         if Plant["success_cycle"]["reproduction"] > 0:       
             pay_cost(Plant, Env, process)
-            allocate_new_biomass(Plant)
+            allocate_biomass(Plant, Plant["new_biomass"])
 
 
 
@@ -435,7 +435,7 @@ def calculate_cost(Plant, Env, process):
                 cost_factor = Plant["cost_params"][process]["unique"][r]
                 Plant["cost"][process][r] = cost_factor * Plant["biomass"]["necromass"]        
     elif process == "maintenance":
-            if not Plant["is_dormancy"]:
+            if Plant["phenology_stage"] != "dormancy":
                 cost_factor = Plant["cost_params"][process]["unique"]["sugar"]
             else:
                 cost_factor = Plant["cost_params"][process]["unique"]["sugar"]/4
@@ -628,8 +628,7 @@ def update_biomass_total(Plant):
         + Plant["biomass"]["absorp"] 
     )
 
-def allocate_new_biomass(Plant):
-    nb = Plant["new_biomass"]
+def allocate_biomass(Plant, nb):
     ra = Plant["ratio_allocation"]
     add_support = nb * ra["support"]
     add_photo   = nb * ra["photo"]
@@ -641,7 +640,6 @@ def allocate_new_biomass(Plant):
     Plant["biomass"]["absorp"]  += add_absorp
     Plant["biomass"]["repro"]   += add_repro
 
-    Plant["new_biomass"] = 0.0
 
     # Recalcule la biomasse vivante (nécromasse non incluse)
     update_biomass_total(Plant)
@@ -656,3 +654,85 @@ def adjust_success_cycle(Plant, process):
         Plant["success_cycle"][process] = Plant["new_biomass"] / expected
     else:
         Plant["success_cycle"][process] = 0.0
+
+
+
+def manage_phenology(Plant, Env, day_index, daily_min_temps):
+    """
+    Gère les événements phénologiques tels que la germination, la reproduction,
+    la mise en réserve et la dessiccation en fonction des variations saisonnières 
+    de photopériode et de température.
+
+    :param Plant: Dictionnaire représentant la plante.
+    :param Env: Dictionnaire représentant l'environnement.
+    :param day_index: Numéro du jour courant dans la simulation.
+    :param daily_min_temps: Liste des températures minimales journalières récentes.
+    """
+
+    photoperiod_today = Ev.calc_daily_photoperiod(day_index)
+    photoperiod_yesterday = Ev.calc_daily_photoperiod(day_index - 1)
+
+    # Germination (sortie de dormance)
+    if  Plant["phenology_stage"] == "seed" or Plant["phenology_stage"] == "dormancy":
+        if len(daily_min_temps) >= 7 and all(t > 3.0 for t in daily_min_temps[-7:]):
+            print("germination ! Day : ",day_index )
+            Plant["phenology_stage"] = "vegetative"
+            return
+        return
+    
+    # Déclenchement de la reproduction
+    if photoperiod_today >= Plant["photoperiod_for_repro"]:
+        if Plant["growth_type"] == "biannual" and day_index > 365:
+            Plant["phenology_stage"] = "reproduction"
+        elif Plant["growth_type"] != "biannual":
+            Plant["phenology_stage"] = "reproduction"
+        return
+
+    # Détection de la réduction photopériodique
+    if photoperiod_today < photoperiod_yesterday:
+        if (Plant["growth_type"] == "biannual" and 
+             Plant["phenology_stage"] != "making_reserve"):
+            Plant["phenology_stage"] = "making_reserve"
+        elif (Plant["growth_type"] == "biannual" and 
+             Plant["phenology_stage"] != "making_reserve" and
+             day_index > 365):
+            Plant["phenology_stage"] = "dessication"
+            Plant["ratio_allocation"]["repro"] = 0.0
+            check_allocation(Plant)
+        elif (photoperiod_today < Plant["photoperiod_for_repro"] and 
+             Plant["phenology_stage"] != "dessication"):
+            Plant["phenology_stage"] = "dessication"
+            Plant["ratio_allocation"]["repro"] = 0.0
+            check_allocation(Plant)
+        return
+
+    # Gestion de la dessiccation en fin de vie ou stress sévère
+    if Plant["biomass"]["photo"] < 0.001 and Plant.get("phenology_stage") == "dessication":
+        Plant["phenology_stage"] = "dormancy"
+        Plant["ratio_allocation"] = {"photo": 0.55, "support": 0.1, "absorp": 0.45, "repro": 0.0}
+        check_allocation(Plant)
+        return
+
+    # Retourne la plante avec le stade phénologique mis à jour
+    return Plant
+
+def intitialize_state_variables(Plant):
+    Plant["diag"] = {}
+    Plant["reserve_used"]  = {"maintenance": False,
+                                "extension": False, 
+                                "reproduction": False, 
+                                "transpiration":False}
+    Plant["adjusted_used"] = {"maintenance": False, 
+                                 "extension": False, 
+                                 "reproduction": False, 
+                                 "transpiration":False}
+    Plant["success_cycle"] = {"extension": 1.0, "reproduction": 1.0}
+    Plant["cost"] = {
+        "extension":   {"sugar": 0.0, "water": 0.0, "nutrient": 0.0},
+        "reproduction":{"sugar": 0.0, "water": 0.0, "nutrient": 0.0},
+        "maintenance":{"sugar": 0.0, "water": 0.0, "nutrient": 0.0},
+        "transpiration":{"sugar": 0.0, "water": 0.0, "nutrient": 0.0}
+    }
+    Plant["flux_in"] =  {"sugar": 0.0, "water": 0.0, "nutrient": 0.0}
+    Plant["new_biomass"] = 0
+    Plant["total_water_needed"] = 0
