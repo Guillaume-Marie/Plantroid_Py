@@ -45,8 +45,7 @@ def destroy_biomass(Plant, Env, which_biomass, damage_factor=None):
     else: 
         Plant["biomass"]["necromass"] += lost
 
-    # Ici, on choisit de les renvoyer au sol en simplifiant un ratio arbitraire :
-    #Plant["reserve"]["water"]    += lost / Plant["cost_params"]["extension"][which_biomass]["water"]
+    # retranslocation des nutriment vers le reserve
     #Plant["reserve"]["nutrient"] += lost / Plant["cost_params"]["extension"][which_biomass]["nutrient"]
 
     # Mettre à jour la biomasse vivante totale :
@@ -456,9 +455,9 @@ def adapt_for_reproduction(Plant):
     Réallocation de la biomasse en cas de stress eau/sucre chroniques.
     """ 
     if Plant["ratio_allocation"]["repro"] <= Plant["alloc_repro_max"]:
-        Plant["ratio_allocation"]["support"] -= max(Plant["alloc_change_rate"]/3, 0.0)
-        Plant["ratio_allocation"]["photo"]   -= max(Plant["alloc_change_rate"]/3, 0.0)
-        Plant["ratio_allocation"]["absorp"]  -= max(Plant["alloc_change_rate"]/3, 0.0)
+        Plant["ratio_allocation"]["support"] = max(Plant["ratio_allocation"]["support"]-Plant["alloc_change_rate"]/3, 0.0)
+        Plant["ratio_allocation"]["photo"]   = max(Plant["ratio_allocation"]["photo"] -Plant["alloc_change_rate"]/3, 0.0)
+        Plant["ratio_allocation"]["absorp"]  = max( Plant["ratio_allocation"]["absorp"]-Plant["alloc_change_rate"]/3, 0.0)
         Plant["ratio_allocation"]["repro"]   +=Plant["alloc_change_rate"] 
     check_allocation(Plant)
 

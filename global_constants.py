@@ -14,7 +14,7 @@ VPD = 11.2 #
 # 3) Distance caractéristique L (m), ex. ~ 10 microns (10e-6 m)
 pore_depth = 1e-5  
 # Constantes physiques
-SIGMA      = 5.670374419e-8
+SIGMA      = 5.670374419e-8 # Stefan-Boltzmann
 RHO_AIR    = 1.225
 CP_AIR     = 1005.0
 LAMBDA_VAP = 2.45e6
