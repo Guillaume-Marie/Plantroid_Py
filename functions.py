@@ -25,7 +25,7 @@ def restore_health(Plant):
     if Plant["health_state"] < 100:
         Plant["health_state"] += 1
 
-def destroy_biomass(Plant, Env, which_biomass, damage_factor=None):
+def destroy_biomass(Plant, Env, which_biomass, process, damage_factor=None):
     """
     Détruit une fraction de la biomasse spécifiée et l'ajoute à la nécromasse.
     Récupère eau et nutriments, renvoyés par exemple au sol (simplifié).
@@ -46,7 +46,9 @@ def destroy_biomass(Plant, Env, which_biomass, damage_factor=None):
         Plant["biomass"]["necromass"] += lost
 
     # retranslocation des nutriment vers le reserve
-    #Plant["reserve"]["nutrient"] += lost / Plant["cost_params"]["extension"][which_biomass]["nutrient"]
+    if which_biomass == "nutrient" and process == "extension":
+        Plant["reserve"][which_biomass] += (lost / 
+            Plant["cost_params"][process][which_biomass]["nutrient"])
 
     # Mettre à jour la biomasse vivante totale :
     update_biomass_total(Plant)
@@ -114,11 +116,83 @@ def photosynthesis(Plant, Env):
 
 def nutrient_absorption(Plant, Env):
     """
-    Absorption d'eau et de nutriments (flux_in) selon la conduction et la transpiration disponible.
+    Calcule l'absorption d'eau et de nutriments par la plante, en fonction :
+      - de la quantité d'eau nécessaire pour compenser la transpiration
+        (Plant["cost"]["transpiration"]["water"]).
+      - de la concentration en nutriments dans le sol
+      - d'un coefficient d'efficacité d'absorption (Plant["water_nutrient_coeff"]).
+
+    Cette fonction met à jour :
+      - Plant["flux_in"]["water"]
+      - Plant["flux_in"]["nutrient"]
+      - Env["soil"]["water"]
+      - Env["soil"]["nutrient"]
+
+    Hypothèses simplifiées :
+    ------------------------
+    1) L'eau prélevée par la plante est <= Env["soil"]["water"].
+    2) Les nutriments absorbés sont proportionnels à la quantité d'eau absorbée
+       et à la concentration en nutriments du sol.
+    3) Un coefficient water_nutrient_coeff ∈ [0..1] environ, 
+       qui reflète l'efficacité de l'absorption racinaire.
+
+    Remarques :
+    -----------
+    - Si Env["soil"]["nutrient"] est la quantité *totale* de nutriments,
+      on doit convertir en concentration via un volume de sol. 
+      Exemple : Env.get("soil_volume", 1.0) = 10 m3 = 1e7 cm3, etc.
+    - Si vous souhaitez un modèle plus complet, vous pouvez introduire
+      des saturations, des cinétiques de Michaelis-Menten, etc.
     """
-    # Eau absorbée (déjà calculée dans flux_in["water"])
-    # Nutriments absorbés proportionnellement
-    Plant["flux_in"]["nutrient"] = Plant["flux_in"]["water"] * Plant["water_nutrient_coeff"]
+
+    # 1) Eau nécessaire pour la transpiration
+    water_needed = Plant["cost"]["transpiration"]["water"]
+    if water_needed <= 0.0:
+        # Pas de besoin en eau => pas d'absorption de nutriments
+        return
+
+    # 2) Vérifier la disponibilité en eau dans le sol
+    water_in_soil = Env["soil"]["water"]
+    if water_in_soil <= 0.0:
+        # Sol complètement sec => pas d'absorption possible
+        return
+
+    # 3) Eau effectivement absorbée = min(eau nécessaire, eau disponible)
+    water_absorbed = min(water_needed, water_in_soil)
+
+    # 4) Calcul de la concentration en nutriments dans le sol
+    #    Soit on l'a déjà via Env["soil"].get("nutrient_concentration", 0.0)
+    #    Soit on la calcule : nutriments_tot / volume_sol
+    soil_nutrient_total = Env["soil"]["nutrient"]  # total (en g)
+    soil_volume = Env.get("soil_volume", 1e7)      # exemple : 1e7 cm3 = 10 L
+    # (À ajuster selon l'unité souhaitée)
+    if soil_volume <= 0:
+        soil_volume = 1e7  # par sécurité
+
+    nutrient_concentration = soil_nutrient_total / soil_volume
+
+    # 5) Nutriments potentiellement absorbables = eau_absorbée * concentration
+    #    On applique aussi le coefficient water_nutrient_coeff
+    nutrients_pot_absorbed = water_absorbed * nutrient_concentration * Plant["water_nutrient_coeff"]
+
+    # On ne peut pas absorber plus de nutriments que ce qui est présent dans Env["soil"]["nutrient"]
+    nutrients_absorbed = min(nutrients_pot_absorbed, Env["soil"]["nutrient"])
+
+    #    - Les nutriments absorbés
+    Plant["flux_in"]["nutrient"] += nutrients_absorbed
+
+    # 7) Mise à jour du sol
+    Env["soil"]["water"] -= water_absorbed
+    Env["soil"]["nutrient"] -= nutrients_absorbed
+
+    # 8) (Optionnel) : Stocker des infos de diagnostic si nécessaire
+    if "diag" not in Plant:
+        Plant["diag"] = {}
+    Plant["diag"]["nutrient_absorption"] = {
+        "water_absorbed": water_absorbed,
+        "nutrients_absorbed": nutrients_absorbed,
+        "nutrient_concentration": nutrient_concentration
+    }
 
 
 def compute_stomatal_area(Plant):
@@ -216,7 +290,7 @@ def post_process_success(Plant, Env, process):
 def post_process_resist(Plant, Env, process):
     if process == "maintenance":
         pay_cost(Plant, Env, process)
-        destroy_biomass(Plant, Env, "support",Plant["support_turnover"])
+        destroy_biomass(Plant, Env, "support", "extension", Plant["support_turnover"])
     elif process == "extension":
         allocate_biomass(Plant, Plant["new_biomass"])
         pay_cost(Plant, Env, process)
@@ -232,8 +306,8 @@ def post_process_fail(Plant, Env, process):
     if process == "maintenance":
         pay_cost(Plant, Env, process)
         degrade_health_state(Plant)
-        destroy_biomass(Plant, Env, "support",Plant["support_turnover"])
-        destroy_biomass(Plant, Env, "absorp", Gl.delta_adapt)
+        destroy_biomass(Plant, Env, "support", "extension", Plant["support_turnover"])
+        destroy_biomass(Plant, Env, "absorp", "extension", Gl.delta_adapt)
     elif process == "extension":
         adjust_success_cycle(Plant, "extension")
         if Plant["success_cycle"]["extension"] > 0:
@@ -278,7 +352,8 @@ def resources_available(Plant, process):
     Vérifie la disponibilité des ressources pour chaque process.
     """
 
-    if (Plant["flux_in"]["sugar"] >= Plant["cost"][process]["sugar"]) :
+    if (Plant["flux_in"]["sugar"] >= Plant["cost"][process]["sugar"] and
+        Plant["flux_in"]["nutrient"] >= Plant["cost"][process]["nutrient"]) :
         return True
     else:
         return False
@@ -382,7 +457,7 @@ def compute_stress(Plant, process):
         stress = 1.0 - min(1.0, ratio_available / Gl.N)
         return (stress, "sugar")
     elif process == "transpiration":
-        sugar_available = Plant["flux_in"]["water"] + Plant["reserve"]["water"]
+        sugar_available = Plant["reserve"]["water"]
         needed = Plant["cost"]["maintenance"]["water"]
         if needed <= 0:
             return (0.0, "water")
@@ -477,13 +552,13 @@ def dessication(Plant, Env):
     Réallocation de la biomasse en cas de stress eau/sucre chroniques.
     """
     if Plant["growth_type"] == "annual" or Plant["growth_type"] == "biannual":
-        destroy_biomass(Plant, Env, "support",Plant["dessication_rate"])
+        destroy_biomass(Plant, Env, "support","extension",Plant["dessication_rate"])
     elif Plant["growth_type"] == "perennial":
-        destroy_biomass(Plant, Env, "support",Plant["support_turnover"])
+        destroy_biomass(Plant, Env, "support","extension",Plant["support_turnover"])
 
-    destroy_biomass(Plant, Env, "absorp", Plant["dessication_rate"])
-    destroy_biomass(Plant, Env, "photo", Plant["dessication_rate"])
-    destroy_biomass(Plant, Env, "repro", Gl.delta_adapt)
+    destroy_biomass(Plant, Env, "absorp","extension", Plant["dessication_rate"])
+    destroy_biomass(Plant, Env, "photo","extension", Plant["dessication_rate"])
+    destroy_biomass(Plant, Env, "repro","reproduction", Gl.delta_adapt)
 
 
 def update_biomass_total(Plant):

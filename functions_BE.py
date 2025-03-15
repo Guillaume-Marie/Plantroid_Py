@@ -348,7 +348,5 @@ def adjust_leaf_params_angle(
     compute_leaf_temperature(Plant, Env, method)
     Fu.photosynthesis(Plant, Env)
     Fu.compute_max_transpiration_capacity(Plant, Env)
-    Env["soil"]["water"] -= Plant["cost"]["transpiration"]["water"]
-
-    # Fin
+    Plant["flux_in"]["water"] = Plant["max_transpiration_capacity"] - Plant["cost"]["transpiration"]["water"]    # Fin
     return  # le Plant est mis à jour in-place

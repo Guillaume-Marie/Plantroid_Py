@@ -135,11 +135,16 @@ def simulate_and_plot(species_name):
 
     day_axes[1,1].plot(day_data["time"], day_data["reserve_sugar"], label="Sucre")
     day_axes[1,1].plot(day_data["time"], day_data["reserve_water"], label="Eau")
-    day_axes[1,1].plot(day_data["time"], day_data["reserve_nutrient"], label="Nutriments")
     day_axes[1,1].set_xlabel("Jour")
     day_axes[1,1].set_ylabel("Réserves (g)")
     day_axes[1,1].set_title("Réserves internes")
     day_axes[1,1].legend()
+
+    day_axes[1,2].plot(day_data["time"], day_data["reserve_nutrient"], label="Nutriments")
+    day_axes[1,2].set_xlabel("Jour")
+    day_axes[1,2].set_ylabel("Réserves (g)")
+    day_axes[1,2].set_title("Réserves internes")
+    day_axes[1,2].legend()
 
     day_axes[1,3].plot(day_data["time"], day_data["atmos_temperature"], label="Tair")
     day_axes[1,3].plot(day_data["time"], day_data["leaf_temperature_after"], label="Taf") 
@@ -307,11 +312,16 @@ def simulate_and_plot(species_name):
 
     night_axes[2,1].plot(night_data["time"], night_data["reserve_sugar"], label="Sucre")
     night_axes[2,1].plot(night_data["time"], night_data["reserve_water"], label="Eau")
-    night_axes[2,1].plot(night_data["time"], night_data["reserve_nutrient"], label="Nutriments")
     night_axes[2,1].set_xlabel("Jour")
     night_axes[2,1].set_ylabel("Réserves (g)")
     night_axes[2,1].set_title("Réserves internes")
     night_axes[2,1].legend()
+
+    night_axes[2,2].plot(night_data["time"], night_data["reserve_nutrient"], label="Nutriments")
+    night_axes[2,2].set_xlabel("Jour")
+    night_axes[2,2].set_ylabel("Réserves (g)")
+    night_axes[2,2].set_title("Réserves internes")
+    night_axes[2,2].legend()
     # ------------------------------------------------------------------
     # Rangée 3 : Températures
     # ------------------------------------------------------------------

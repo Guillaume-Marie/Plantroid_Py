@@ -95,7 +95,7 @@ species_db = {
         "watt_to_sugar_coeff":         4.3e-7,    # J/s ---> gC6H12O6/s
         "support_transport_coeff":     5e-3,    # (g/s/MPa)/gsupport
         "soil_supply_coeff":           0.1,
-        "water_nutrient_coeff":        3e-3,
+        "water_nutrient_coeff":        8e-2,
         "stomatal_density":            5.0e7,   # stomates/m²
         "alloc_change_rate":           Gl.delta_adapt/5,
         "alloc_repro_max":             0.85,
@@ -103,12 +103,12 @@ species_db = {
         "support_turnover":            Gl.delta_adapt/20,
         "cost_params": {
             "extension": {
-                "photo":    {"sugar": 0.5,  "water": 0.75, "nutrient": 0.0},
-                "absorp":   {"sugar": 0.5,  "water": 0.75, "nutrient": 0.0},
-                "support":  {"sugar": 0.5,  "water": 0.75, "nutrient": 0.0}
+                "photo":    {"sugar": 0.5,  "water": 0.75, "nutrient": 0.02},
+                "absorp":   {"sugar": 0.5,  "water": 0.75, "nutrient": 0.02},
+                "support":  {"sugar": 0.5,  "water": 0.75, "nutrient": 0.01}
             },
             "reproduction": {
-                "unique":   {"sugar": 0.5,  "water": 0.25, "nutrient": 0.0}
+                "unique":   {"sugar": 0.5,  "water": 0.25, "nutrient": 0.03}
             },
             "maintenance": {
                 "unique":   {"sugar": 5e-7, "water": 0.0, "nutrient": 0.0}
@@ -116,7 +116,7 @@ species_db = {
         },
         "storage_fraction": {"sugar": 0.05, "water": 0.05, "nutrient": 0.05},
         "ratio_allocation": {"support": 0.2, "absorp": 0.3, "photo": 0.5, "repro": 0.0},
-        "reserve":  {"sugar": 0.039, "water": 0.01, "nutrient": 0.001},
+        "reserve":  {"sugar": 0.039, "water": 0.01, "nutrient": 0.003},
         "size": 1.0,
         "biomass_total": 0.01
     },
@@ -133,7 +133,7 @@ species_db = {
         "watt_to_sugar_coeff":         4.0e-6,    # J/s ---> gC6H12O6/s
         "support_transport_coeff":     5e-3,    # (g/s/MPa)/gsupport
         "soil_supply_coeff":           0.1,
-        "water_nutrient_coeff":        3e-3,
+        "water_nutrient_coeff":        7e-3,
         "stomatal_density":            6.0e7,   # stomates/m²
         "alloc_change_rate":           Gl.delta_adapt/4,
         "alloc_repro_max":             0.95,

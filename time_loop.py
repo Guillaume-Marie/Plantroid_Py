@@ -130,10 +130,10 @@ def run_simulation_collect_data(max_cycles):
 
             # 8. Réserves
             Fu.refill_reserve(Pl.Plant, "sugar")
-            Fu.refill_reserve(Pl.Plant, "water")
+            #Fu.refill_reserve(Pl.Plant, "water")
             Fu.refill_reserve(Pl.Plant, "nutrient")
 
-        #Fu.destroy_biomass(Pl.Plant, Ev.Environment, "necromass", Gl.delta_adapt)
+        #Fu.destroy_biomass(Pl.Plant, Ev.Environment, "necromass","none",Gl.delta_adapt)
 
         # 10. Mortalité
         if Pl.Plant["biomass_total"] <= 0.005: 
