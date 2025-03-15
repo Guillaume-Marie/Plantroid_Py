@@ -132,6 +132,11 @@ def simulate_and_plot(species_name):
     # ------------------------------------------------------------------
     # Rangée 1
     # ------------------------------------------------------------------
+    day_axes[1,0].plot(day_data["time"], day_data["actual_sugar"], label="available sugar")
+    day_axes[1,0].set_xlabel("Jour")
+    day_axes[1,0].set_ylabel("Valeurs calculées")
+    day_axes[1,0].set_title("Photosynthèse net")
+    day_axes[1,0].legend()
 
     day_axes[1,1].plot(day_data["time"], day_data["reserve_sugar"], label="Sucre")
     day_axes[1,1].plot(day_data["time"], day_data["reserve_water"], label="Eau")
@@ -156,10 +161,13 @@ def simulate_and_plot(species_name):
     # ------------------------------------------------------------------
     # Rangée 2 : Températures
     # ------------------------------------------------------------------
-    day_axes[2,0].plot(day_data["time"], day_data["stomatal_conductance"])
+    day_axes[2,0].plot(day_data["time"], day_data["stomatal_conductance"], label="gs")
+    day_axes[2,0].plot(day_data["time"], day_data["leaf_angle"], label="angle")
+    day_axes[2,0].plot(day_data["time"], day_data["nutrient_index"], label="nutrient")
     day_axes[2,0].set_xlabel("Jour")
-    day_axes[2,0].set_ylabel("Conductance (0..1)")
-    day_axes[2,0].set_title("Conductance stomatique")
+    day_axes[2,0].set_ylabel("index (0..1)")
+    day_axes[2,0].set_title("regulation index")
+    day_axes[2,0].legend()
 
     # reserve_used & adjusted_used
     day_axes[2,1].plot(day_data["time"], day_data["reserve_used_maintenance"], label="Maint.")
@@ -222,7 +230,7 @@ def simulate_and_plot(species_name):
 
     ax = day_axes[4, 0]
     x = day_data["time"]      
-    #ax.plot(x, day_data["cost_transpiration_water"], label="Eau")  
+    ax.plot(x, day_data["cost_transpiration_water"], label="Eau")  
     ax.set_xlabel("Jour")
     ax.set_ylabel("Coût (g)")
     ax.set_title(f"Processus transpiration")

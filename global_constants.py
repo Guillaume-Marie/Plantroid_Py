@@ -8,7 +8,6 @@ max_cycles = 24*220
 DT = 3600 # pas de temps en secondes
 delta_adapt = 0.0000015 * DT # vitesse d'evolution des paramètre par DT 0.000001389
 N = 24
-total_soil_volume = 1e7 # cm³ (hypothèse : 10 m³ de sol total dans l'environnement)
 D_H2O = 2.5e-5 # m²/s "coefficient de diffusion" simplifié.
 VPD = 11.2 # 
 # 3) Distance caractéristique L (m), ex. ~ 10 microns (10e-6 m)

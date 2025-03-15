@@ -31,6 +31,7 @@ def run_simulation_collect_data(max_cycles):
     daily_min_temps = []
     day_min_temp = float('inf')  # Pour stocker la T min courante de la journée
     previous_day_index = 0       # Pour savoir quand on change de jour
+    Ev.Environment["soil"]["water"] = Ev.Environment["soil_volume"]* 1000 * 1000 * 0.5
 
     while Pl.Plant["alive"] and cycle_count < max_cycles:
         time += 1
@@ -64,7 +65,7 @@ def run_simulation_collect_data(max_cycles):
         if day_index != previous_day_index:
             # reset stomatal conductance everyday
             Pl.Plant["stomatal_conductance"] = 1.0
-            Pl.Plant["leaf_angle"] = 1.0
+            Pl.Plant["leaf_angle"] = 0.0
             # 1. Phenology
             Fu.manage_phenology(Pl.Plant, Ev.Environment, day_index, daily_min_temps)
             previous_day_index = day_index
@@ -99,9 +100,9 @@ def run_simulation_collect_data(max_cycles):
             Be.adjust_leaf_params_angle(
                         Pl.Plant,
                         Ev.Environment,
-                        alpha=0.0,
-                        beta=0.0,
-                        gamma=1.0) 
+                        alpha=1.0,
+                        beta=1.0,
+                        gamma=0.0) 
 
         # 4. Assimilation
         Fu.nutrient_absorption(Pl.Plant, Ev.Environment)
@@ -129,17 +130,26 @@ def run_simulation_collect_data(max_cycles):
 
 
             # 8. Réserves
-            Fu.refill_reserve(Pl.Plant, "sugar")
-            #Fu.refill_reserve(Pl.Plant, "water")
-            Fu.refill_reserve(Pl.Plant, "nutrient")
+            if Ev.Environment["atmos"]["light"] > 0.0:
+                Fu.refill_reserve(Pl.Plant, "sugar")
+                Fu.refill_reserve(Pl.Plant, "water")
+                Fu.refill_reserve(Pl.Plant, "nutrient")
 
         #Fu.destroy_biomass(Pl.Plant, Ev.Environment, "necromass","none",Gl.delta_adapt)
+
+
+        # -- Vérification : si un pool ou un flux est négatif, on arrête --
+        # (juste avant l'enregistrement dans l'historique)
+        stop_now = Fu.check_for_negatives(Pl.Plant, Ev.Environment, time)
+        if stop_now:
+            break
+
+        # 11. Sauvegarde historique
+        Hi.history_update(Pl.Plant, Hi.history, Ev.Environment, time)
 
         # 10. Mortalité
         if Pl.Plant["biomass_total"] <= 0.005: 
             Pl.Plant["alive"] = False
-
-        # 11. Sauvegarde historique
-        Hi.history_update(Pl.Plant, Hi.history, Ev.Environment, time)
+            #print("The plant died !!")
 
     return Hi.history, Pl.Plant, Ev.Environment

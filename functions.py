@@ -1,11 +1,65 @@
 import global_constants as Gl
 import Environnement_def as Ev
 import global_constants as Gl
-import numpy as np
-
+import math
 #######################################
 #         FONCTIONS DE SANTÉ          #
 #######################################
+def check_for_negatives(Plant, Env, time):
+    """
+    Vérifie si un pool de biomasse ou un flux est devenu négatif.
+    Si oui, on affiche un message d'erreur détaillé et on met Plant["alive"] à False.
+    """
+    # 1) Vérifier la biomasse
+    for compartment, val in Plant["biomass"].items():
+        if val < -1e-12:  # on tolère éventuellement un léger écart numérique
+            print("====================================================")
+            print(f"ERREUR: Biomasse négative détectée à t={time} h !")
+            print(f"Compartiment '{compartment}' = {val:.5f}")
+            print("Voici d'autres informations utiles pour le diagnostic :")
+            print(f"  - Biomasse totale       = {Plant['biomass_total']:.5f}")
+            print(f"  - Biomasse totale       = { Plant['biomass']['photo']:.5f}")
+            print(f"  - Biomasse totale       = { Plant['biomass']['absorp']:.5f}")
+            print(f"  - Biomasse totale       = { Plant['biomass']['support']:.5f}")    
+            print(f"  - Biomasse totale       = { Plant['biomass']['repro']:.5f}") 
+            print(f"  - Flux in sugar         = { Plant['flux_in']['sugar'] :.5f}")
+            print(f"  - Flux in water         = { Plant['flux_in']['water'] :.5f}")  
+            print(f"  - Flux in nutrient      = { Plant['flux_in']['nutrient'] :.5f}")                   
+            print(f"  - Reserve sugar         = {Plant['reserve']['sugar']:.5f}")
+            print(f"  - Reserve water         = {Plant['reserve']['water']:.5f}")
+            print(f"  - Reserve nutrient      = {Plant['reserve']['nutrient']:.5f}")
+            print(f"  - Phenology stage       = {Plant['phenology_stage']}")
+            print(f"  - Health state          = {Plant['health_state']}")
+            print("====================================================")
+            Plant["alive"] = False
+            return True  # indique qu'on a trouvé une erreur
+
+    # 2) Vérifier les flux
+    for flux_name, val in Plant["flux_in"].items():
+        if val < -1e-12:
+            print("====================================================")
+            print(f"ERREUR: Flux négatif détecté à t={time} h !")
+            print(f"Flux '{flux_name}' = {val:.5f}")
+            print("Informations de diagnostic :")
+            print(f"  - Biomasse total        = {Plant['biomass_total']:.5f}")
+            print(f"  - Biomasse photo        = { Plant['biomass']['photo']:.5f}")
+            print(f"  - Biomasse absorp       = { Plant['biomass']['absorp']:.5f}")
+            print(f"  - Biomasse support      = { Plant['biomass']['support']:.5f}")    
+            print(f"  - Biomasse repro        = { Plant['biomass']['repro']:.5f}")  
+            print(f"  - Flux in sugar         = { Plant['flux_in']['sugar'] :.5f}")
+            print(f"  - Flux in water         = { Plant['flux_in']['water'] :.5f}")  
+            print(f"  - Flux in nutrient      = { Plant['flux_in']['nutrient'] :.5f}")                     
+            print(f"  - Reserve sugar         = {Plant['reserve']['sugar']:.5f}")
+            print(f"  - Reserve water         = {Plant['reserve']['water']:.5f}")
+            print(f"  - Reserve nutrient      = {Plant['reserve']['nutrient']:.5f}")
+            print(f"  - Phenology stage       = {Plant['phenology_stage']}")
+            print(f"  - Health state          = {Plant['health_state']}")
+            print("====================================================")
+            Plant["alive"] = False
+            return True
+
+    # 3) Aucune erreur trouvée
+    return False
 
 def degrade_health_state(Plant):
     """
@@ -48,20 +102,98 @@ def destroy_biomass(Plant, Env, which_biomass, process, damage_factor=None):
     # retranslocation des nutriment vers le reserve
     if which_biomass == "nutrient" and process == "extension":
         Plant["reserve"][which_biomass] += (lost / 
-            Plant["cost_params"][process][which_biomass]["nutrient"])
+            Plant["cost_params"][process][which_biomass]["nutrient"])*0.5
 
     # Mettre à jour la biomasse vivante totale :
     update_biomass_total(Plant)
 
+def ensure_maintenance_sugar(Plant, Env):
+    """
+    Vérifie si la plante a suffisamment de sucre pour la maintenance.
+    Sinon, détruit assez de biomasse (cannibalisation) pour libérer 
+    le sucre manquant et éviter un flux négatif.
+    
+    Hypothèse : 1 g de biomasse vivante détruite fournit 'cannibal_ratio' g de sucre.
+                On détruit d'abord la biomasse 'photo', puis si besoin 'support', etc.
+    """
+    # 1) Récupérer le coût en sucre pour la maintenance
+    needed_sugar = Plant["cost"]["maintenance"]["sugar"]
+    
+    # 2) Calculer la quantité actuellement disponible
+    available_sugar = Plant["flux_in"]["sugar"] + Plant["reserve"]["sugar"]
+    
+    # 3) Court-circuit si tout va bien
+    shortfall = needed_sugar - available_sugar
+    if shortfall <= 0:
+        return  # Rien à faire, on a déjà assez de sucre
+
+    # ------------------------------------------------------------
+    # 4) Sinon, on détruit de la biomasse vivante pour libérer du sucre
+    #    Hypothèse simplifiée : 1 g de biomasse => cannibal_ratio g de sucre
+    # ------------------------------------------------------------
+    cannibal_ratio = 0.3  # exemple : 1 g de biomasse détruite libère 0.3 g de sucre
+
+    # On procède dans un ordre défini (ex: 'photo' puis 'support' puis 'absorp')
+    compartments_order = ["photo", "support", "absorp"]
+    
+    # Combien de grammes de biomasse nous faut-il détruire ?
+    # shortfall = mass_to_destroy * cannibal_ratio
+    # => mass_to_destroy = shortfall / cannibal_ratio
+    mass_to_destroy = shortfall / cannibal_ratio
+    
+    for comp in compartments_order:
+        if mass_to_destroy <= 0:
+            break  # on a déjà couvert le besoin
+        if Plant["biomass"][comp] > 0:
+            # quantité qu'on peut détruire sur ce compartiment
+            can_destroy = Plant["biomass"][comp]
+            destroy_here = min(can_destroy, mass_to_destroy)
+            
+            # 1) On détruit effectivement la biomasse
+            Plant["biomass"][comp] -= destroy_here
+                # On ajoute la même quantité à la nécromasse
+            if comp == "necromass" or comp == "repro":
+                Env["litter"]["necromass"] += destroy_here
+            else: 
+                Plant["biomass"]["necromass"] += destroy_here
+            # 2) On récupère le sucre correspondant
+            sugar_recovered = destroy_here * cannibal_ratio
+            
+            # 3) On ajoute ce sucre à flux_in ou reserve, pour payer la maintenance
+            #    ici, on choisit par ex. d'ajouter dans flux_in["sugar"]
+            Plant["flux_in"]["sugar"] += sugar_recovered
+            
+            # 4) On met à jour la quantité qu’il reste à détruire
+            mass_to_destroy -= destroy_here
+    
+    # MàJ : on recalcule la biomasse vivante totale
+    update_biomass_total(Plant)
+    
+    # Facultatif : si malgré tout la plante n'a toujours pas assez de sucre,
+    # on peut la forcer à mourir ou dégrader sa santé
+    remaining_shortfall = Plant["cost"]["maintenance"]["sugar"] - (Plant["flux_in"]["sugar"] + Plant["reserve"]["sugar"])
+    if remaining_shortfall > 0:
+        pass
+        #print("WARNING: Even after cannibalizing biomass, not enough sugar for maintenance!")
+        # Option 1 : on tue la plante
+        # Plant["alive"] = False
+        # Option 2 : on dégrade simplement la santé
+        # degrade_health_state(Plant)
 
 def refill_reserve(Plant, rsc):
     """
     Transfère toute la flux_in[rsc] dans les réserves reserve[rsc].
     """
-    if Plant["flux_in"][rsc] > 0 :
-        usable_in = Plant["flux_in"][rsc]
+    if rsc =="water" and Plant["reserve"][rsc] >= Plant["biomass_total"]:
+        return
+
+    if Plant["flux_in"][rsc] >= 0.0 :
+        usable_in = Plant["flux_in"][rsc] * Gl.delta_adapt
         Plant["flux_in"][rsc] -= usable_in
         Plant["reserve"][rsc] += usable_in
+    else:
+        print("error in refill flux_in in :", rsc,
+               "is negative : ", Plant["flux_in"][rsc])
 
 
 #################################################
@@ -82,10 +214,8 @@ def photosynthesis(Plant, Env):
     Photosynthèse : production de sucre (flux_in["sugar"]).
     On enregistre aussi des variables pour l'affichage détaillé.
     """
-    cos_theta = np.cos(Plant["leaf_angle"])
-    if cos_theta < 0:
-        cos_theta = 0.0
-    absorbed_solar = Env["atmos"]["light"] * cos_theta * (1.0 - 0.25)
+    cos_theta = max(0.0, math.cos(Plant["leaf_angle"]))
+    absorbed_solar = Env["atmos"]["light"] * cos_theta * (1.0 - Plant["leaf_albedo"])
     # 1) fraction de la puissance lumineuse interceptée J/s/gleaf
     power_absorbed = absorbed_solar * Plant["sla_max"] * Plant["slai"] 
     
@@ -94,25 +224,31 @@ def photosynthesis(Plant, Env):
     temp_lim = max(0.0, 1.0 - Plant["temp_photo_sensitivity"] * temp_diff)
 
     # flux initial gC6H12O6/s/gleaf
-    C6H12O6_flux_pot = power_absorbed * Plant["watt_to_sugar_coeff"] * temp_lim 
+    C6H12O6_flux_pot = (power_absorbed * 
+                        Plant["watt_to_sugar_coeff"] * 
+                        temp_lim * 
+                        Plant["nutrient_index"])
 
     # facteur CO2 dimensionless (0...1)
     cf = Env["atmos"]["Co2"] / 400.0
 
     # on prend en compte la conductance et le CO2
-    C6H12O6_flux = C6H12O6_flux_pot * cf * Plant["stomatal_conductance"] 
+    C6H12O6_flux = (C6H12O6_flux_pot * cf * 
+                    Plant["stomatal_conductance"] * 
+                    Plant["nutrient_index"])
 
     # Production finale de sucre en gC6H12O6/DT
     Plant["flux_in"]["sugar"] = C6H12O6_flux * Plant["biomass"]["photo"] * Gl.DT
 
     # On peut donc estimer la quantité de H2O utilisé pour formé les sucres
-    Plant["cost"]["transpiration"]["water"] = Plant["flux_in"]["sugar"] * Gl.RATIO_H2O_C6H12O6 
+    Plant["cost"]["transpiration"]["water"] += Plant["flux_in"]["sugar"] * Gl.RATIO_H2O_C6H12O6 
 
     # Sauvegarde des variables de diagnostic
     # (gSugar/s par gFeuille, avant surface complète)
     Plant["diag"]["raw_sugar_flux"] = power_absorbed * Plant["watt_to_sugar_coeff"]  
     # (gSugar/s, aprés limitation température)
     Plant["diag"]["pot_sugar"]      = C6H12O6_flux  
+    Plant["diag"]["actual_sugar"]   = Plant["flux_in"]["sugar"]
 
 def nutrient_absorption(Plant, Env):
     """
@@ -164,16 +300,13 @@ def nutrient_absorption(Plant, Env):
     #    Soit on l'a déjà via Env["soil"].get("nutrient_concentration", 0.0)
     #    Soit on la calcule : nutriments_tot / volume_sol
     soil_nutrient_total = Env["soil"]["nutrient"]  # total (en g)
-    soil_volume = Env.get("soil_volume", 1e7)      # exemple : 1e7 cm3 = 10 L
-    # (À ajuster selon l'unité souhaitée)
-    if soil_volume <= 0:
-        soil_volume = 1e7  # par sécurité
+    soil_water = Env["soil"]["water"]      # exemple : 1 m3 = 1000 L
 
-    nutrient_concentration = soil_nutrient_total / soil_volume
+    Env["soil"]["nutrient_concentration"] = soil_nutrient_total / soil_water
 
     # 5) Nutriments potentiellement absorbables = eau_absorbée * concentration
     #    On applique aussi le coefficient water_nutrient_coeff
-    nutrients_pot_absorbed = water_absorbed * nutrient_concentration * Plant["water_nutrient_coeff"]
+    nutrients_pot_absorbed = water_absorbed * Env["soil"]["nutrient_concentration"] * Plant["water_nutrient_coeff"]
 
     # On ne peut pas absorber plus de nutriments que ce qui est présent dans Env["soil"]["nutrient"]
     nutrients_absorbed = min(nutrients_pot_absorbed, Env["soil"]["nutrient"])
@@ -191,7 +324,7 @@ def nutrient_absorption(Plant, Env):
     Plant["diag"]["nutrient_absorption"] = {
         "water_absorbed": water_absorbed,
         "nutrients_absorbed": nutrients_absorbed,
-        "nutrient_concentration": nutrient_concentration
+        "nutrient_concentration": Env["soil"]["nutrient_concentration"] 
     }
 
 
@@ -222,21 +355,21 @@ def compute_stomatal_conductance_max(Plant):
 
     return g_stomatal_max
 
-def compute_root_explored_volume(Plant):
+def compute_root_explored_volume(Plant, Env):
     """
     Calcule le volume de sol exploré par les racines en fonction de la biomasse racinaire.
     """
     explored_volume = Plant["biomass"]["absorp"] * Gl.k_root  # cm³
-    return min(explored_volume, Gl.total_soil_volume)
+    return min(explored_volume, Env["soil_volume"]*1e6 )
 
 
 def compute_available_water(Plant, Env):
     """
     Calcule l'eau disponible pour la plante en fonction du volume de sol exploré.
     """
-    explored_volume = compute_root_explored_volume(Plant)   
+    explored_volume = compute_root_explored_volume(Plant, Env)   
     # Calcul de la teneur en eau du sol (g d’eau / cm³ de sol)
-    soil_moisture = Env["soil"]["water"] / Gl.total_soil_volume  # g d'eau / cm³ de sol
+    soil_moisture = Env["soil"]["water"] / (Env["soil_volume"]*1e6)  # g d'eau / cm³ de sol
     available_water = explored_volume * soil_moisture  # g d'eau total disponible
     
     return min(available_water, Env["soil"]["water"])  # On ne peut pas extraire plus que ce qui est dispo
@@ -266,7 +399,7 @@ def compute_max_transpiration_capacity(Plant, Env):
     # 3) Extraire la valeur minimale et la clé correspondante
     min_capacity = min(capacities.values())
     limiting_pool = min(capacities, key=capacities.get)
-
+    #print(limiting_pool)
     # 4) Stocker la valeur et l'information du compartiment limitant
     Plant["max_transpiration_capacity"] = min_capacity
     Plant["transp_limit_pool"] = limiting_pool
@@ -290,7 +423,6 @@ def post_process_success(Plant, Env, process):
 def post_process_resist(Plant, Env, process):
     if process == "maintenance":
         pay_cost(Plant, Env, process)
-        destroy_biomass(Plant, Env, "support", "extension", Plant["support_turnover"])
     elif process == "extension":
         allocate_biomass(Plant, Plant["new_biomass"])
         pay_cost(Plant, Env, process)
@@ -306,8 +438,7 @@ def post_process_fail(Plant, Env, process):
     if process == "maintenance":
         pay_cost(Plant, Env, process)
         degrade_health_state(Plant)
-        destroy_biomass(Plant, Env, "support", "extension", Plant["support_turnover"])
-        destroy_biomass(Plant, Env, "absorp", "extension", Gl.delta_adapt)
+        ensure_maintenance_sugar(Plant, Env)
     elif process == "extension":
         adjust_success_cycle(Plant, "extension")
         if Plant["success_cycle"]["extension"] > 0:
@@ -353,7 +484,8 @@ def resources_available(Plant, process):
     """
 
     if (Plant["flux_in"]["sugar"] >= Plant["cost"][process]["sugar"] and
-        Plant["flux_in"]["nutrient"] >= Plant["cost"][process]["nutrient"]) :
+        Plant["flux_in"]["nutrient"] >= Plant["cost"][process]["nutrient"] and
+        Plant["flux_in"]["water"] >= Plant["cost"][process]["water"]) :
         return True
     else:
         return False
@@ -363,11 +495,12 @@ def pay_cost(Plant, Env, process):
     """
     Soustrait le coût en ressources ou en flux.
     """
-    if process != "maintenance":
+    if process == "extension" or  process == "reproduction":
         Plant["flux_in"]["sugar"] -= Plant["cost"][process]["sugar"]
-        Plant["flux_in"]["nutrient"] -= Plant["cost"][process]["nutrient"]   
-    else:
-        Plant["flux_in"]["sugar"] -= Plant["cost"][process]["sugar"]  
+        Plant["flux_in"]["nutrient"] -= Plant["cost"][process]["nutrient"]
+        Plant["flux_in"]["water"] -= Plant["cost"][process]["water"] 
+    elif process == "maintenance":
+        Plant["flux_in"]["sugar"] -= Plant["cost"][process]["sugar"] 
 
 
 
@@ -498,6 +631,18 @@ def adapt_leaf_structure(Plant, Env):
         Plant["slai"] = max(0.01, Plant["slai"] - Gl.delta_adapt)
     elif Env["atmos"]["light"] > 800:
         Plant["slai"] = min(1.0, Plant["slai"] + Gl.delta_adapt)
+    
+
+def adapt_leaf_nutrient(Plant):
+
+    Plant["nutrient_index"] = max(0.1, 
+                Plant["nutrient_index"] - Gl.delta_adapt) 
+    Plant["cost_params"]["extension"]["photo"]["nutrient"]= max(0.001, 
+                Plant["cost_params"]["extension"]["photo"]["nutrient"] - Gl.delta_adapt) 
+    Plant["cost_params"]["extension"]["absorp"]["nutrient"]= max(0.001, 
+                Plant["cost_params"]["extension"]["absorp"]["nutrient"] - Gl.delta_adapt) 
+    Plant["cost_params"]["extension"]["support"]["nutrient"]= max(0.001, 
+                Plant["cost_params"]["extension"]["support"]["nutrient"] - Gl.delta_adapt) 
 
 def adapt_water_supply(Plant, Env):
     """
@@ -536,6 +681,18 @@ def adapt_for_reproduction(Plant):
         Plant["ratio_allocation"]["repro"]   +=Plant["alloc_change_rate"] 
     check_allocation(Plant)
 
+def adapt_nutrient_supply(Plant):
+    """
+    Réallocation de la biomasse en cas de stress eau/sucre chroniques.
+    """
+    #print(Plant["transp_limit_pool"])
+    if Plant["ratio_allocation"]["absorp"] <= 0.8:
+        Plant["ratio_allocation"]["support"]  = max(Plant["ratio_allocation"]["support"]-Gl.delta_adapt/2, 0.0)
+        Plant["ratio_allocation"]["absorp"]   += Gl.delta_adapt
+        Plant["ratio_allocation"]["photo"]    = max(Plant["ratio_allocation"]["photo"]-Gl.delta_adapt/2, 0.0)
+        adapt_leaf_nutrient(Plant)
+    check_allocation(Plant)
+
 def check_allocation(Plant):
     sumalloc = (Plant["ratio_allocation"]["support"]+
     Plant["ratio_allocation"]["photo"] +
@@ -558,7 +715,7 @@ def dessication(Plant, Env):
 
     destroy_biomass(Plant, Env, "absorp","extension", Plant["dessication_rate"])
     destroy_biomass(Plant, Env, "photo","extension", Plant["dessication_rate"])
-    destroy_biomass(Plant, Env, "repro","reproduction", Gl.delta_adapt)
+    destroy_biomass(Plant, Env, "repro","reproduction", Plant["dessication_rate"])
 
 
 def update_biomass_total(Plant):

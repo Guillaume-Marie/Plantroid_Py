@@ -4,9 +4,15 @@ import math
 
 #Environnement initial
 Environment = {
-    "soil":    {"water": 250000000.0, "nutrient": 5000000.0},
+    "soil":    {"water": 0.0, "nutrient": 3600.0},
     "litter":  {"necromass": 0.0, "repro":0.0},
-    "atmos":   {"Co2": 1000.0, "light": 1000.0, "water": 100.0, "temperature": 25.0},
+    "atmos":   {"Co2": 1000.0, 
+                "light": 1000.0, 
+                "water": 100.0, 
+                "temperature": 25.0, 
+                "wind": 1.0,
+                "RH": 0.5,
+                "longwave":400.0},
     # -------------------------
     # 1) Paramètres de base
     # -------------------------
@@ -17,9 +23,10 @@ Environment = {
     "base_light":           1000.0, # luminosité max (p. ex. W/m²) en plein été
     "seasonal_light_var":   0.5,    # en hiver, la luminosité max ~ base_light * (1 - seasonal_light_var)
 
-    "precipitation_base":   1.9,    # mm (ou g eau/m²) par jour, en moyenne
-    "seasonal_rain_var":    0.8,    # +/- 50% selon la saison
-    "random_factor":        0.3    # intensité du facteur aléatoire (30%)
+    "precipitation_base":   1.9,    # mm (ou g eau/m²) par jour, en moyenne (1.9)
+    "seasonal_rain_var":    0.01,    # +/- 50% selon la saison
+    "random_factor":        0.3,    # intensité du facteur aléatoire (30%)
+    "soil_volume":          0.005      # m3
 }
 
 #######################################
@@ -121,8 +128,11 @@ def update_environment(time, Env):
         daily_rain = daily_rain_mean * (1.0 +  Environment["random_factor"] * (2.0*random.random() - 1.0))
         # on ajoute la pluie dans le sol (grand réservoir) 
         # Conversion mm -> g eau... c’est arbitraire, on peut rester cohérent
-        Env["soil"]["water"] += daily_rain * 1000.0  * 1000
-        Env["rain_event"] = daily_rain * 1000.0 * 1000
+        water_max = (Environment["soil_volume"] * 1000 * 1000) * 0.8
+        Env["rain_event"] = daily_rain * 1000 * Environment["soil_volume"]
+        if Env["soil"]["water"] < water_max:
+            Env["soil"]["water"] += daily_rain * 1000 * Environment["soil_volume"]
+        Env["rain_event"] = daily_rain * 1000 * Environment["soil_volume"]
     else:
         # Pas de pluie à cette heure
         Env["rain_event"] = 0.0

@@ -17,17 +17,17 @@ def leaf_energy_balance_plantroid(T_leaf_K, Plant, Env):
     """
     # --- 1) Extraire les variables depuis Env ---
     shortwave_solar = Env["atmos"]["light"]                     # W·m^-2
-    LWR_in          = Env.get("atmos",{}).get("longwave_in", 400.0)
+    LWR_in          = Env["atmos"]["longwave"]
     T_air_C         = Env["atmos"]["temperature"]               # °C
-    RH              = Env.get("atmos",{}).get("RH", 0.5)
-    wind_speed      = Env.get("wind_speed", 1.0)
+    RH              = Env["atmos"]["RH"]
+    wind_speed      = Env["atmos"]["wind"]
 
     # --- 2) Depuis Plant ---
-    albedo_leaf     = Plant.get("albedo_leaf", 0.25)
-    emissivity_leaf = Plant.get("emissivity_leaf", 0.95)
-    r_stomatal      = Plant.get("r_stomatal", 100.0)   # s/m
-    leaf_size       = Plant.get("leaf_size", 0.05)     # m
-    leaf_angle      = Plant.get("leaf_angle", 0.0)     # radians, angle entre la normale et le rayon
+    albedo_leaf     = Plant["leaf_albedo"]
+    leaf_emissivity = Plant["leaf_emissivity"]
+    r_stomatal      = Plant["r_stomatal"] # s/m
+    leaf_size       = Plant["leaf_size"]     # m
+    leaf_angle      = Plant["leaf_angle"]    # radians, angle entre la normale et le rayon
 
     # Conversion pour l'air
     T_air_K = T_air_C + 273.15
@@ -35,13 +35,11 @@ def leaf_energy_balance_plantroid(T_leaf_K, Plant, Env):
 
     # --- a) Rayonnement solaire absorbé ---
     # On applique cos(leaf_angle), borné à 0 si < 0.
-    cos_theta = np.cos(leaf_angle)
-    if cos_theta < 0:
-        cos_theta = 0.0
+    cos_theta = max(0.0, math.cos(leaf_angle))
     absorbed_solar = shortwave_solar * cos_theta * (1.0 - albedo_leaf)
 
     # Rayonnement infrarouge émis par la feuille
-    LWR_out = emissivity_leaf * Gl.SIGMA * (T_leaf_K**4)
+    LWR_out = leaf_emissivity * Gl.SIGMA * (T_leaf_K**4)
     # Rayonnement net : R_n = (solaire absorbé) + (LWR_in - LWR_out)
     R_n = absorbed_solar + (LWR_in - LWR_out)
 
@@ -64,7 +62,7 @@ def leaf_energy_balance_plantroid(T_leaf_K, Plant, Env):
 
     # convertir un flux de chaleur latente λE (en W·m⁻²) en gH2O consommés pendant un pas de temps Δt.
     total_leaf_surface = Plant["biomass"]["photo"] *Plant["sla_max"] * Plant["slai"]
-    Plant["cost"]["transpiration"]["water"] += E_mass * 1000 * Gl.DT * total_leaf_surface
+    Plant["cost"]["transpiration"]["water"] = E_mass * 1000 * Gl.DT * total_leaf_surface
     # --- d) Bilan ---
     balance = R_n - H - lambdaE
     return balance
@@ -103,14 +101,14 @@ def approximate_leaf_temperature(Plant, Env):
     """
 
     # --- Paramètres ---
-    emissivity_leaf = Plant.get("emissivity_leaf", 0.95)
-    albedo_leaf = Plant.get("albedo_leaf", 0.25)
-    leaf_angle = Plant.get("leaf_angle", 0.0)
+    leaf_emissivity = Plant["leaf_emissivity"]
+    albedo_leaf = Plant["leaf_albedo"]
+    leaf_angle = Plant["leaf_angle"]
 
     T_air = Env["atmos"]["temperature"]  # °C
-    wind_speed = Env.get("wind_speed", 1.0)
-    RH = Env["atmos"].get("RH", 0.5)
-    LWR_in = Env["atmos"].get("longwave_in", 400.0)  # W/m2
+    wind_speed = Env["atmos"]["wind"]
+    RH = Env["atmos"]["RH"]
+    LWR_in = Env["atmos"]["longwave"]  # W/m2
 
     # Convert °C -> K
     T_air_K = T_air + 273.15
@@ -121,13 +119,13 @@ def approximate_leaf_temperature(Plant, Env):
     absorbed_solar = shortwave_solar * cos_theta * (1.0 - albedo_leaf)
 
     # Approximons la LWR_out en prenant T_air comme pivot
-    LWR_out_guess = emissivity_leaf * Gl.SIGMA * (T_air_K ** 4)
+    LWR_out_guess = leaf_emissivity * Gl.SIGMA * (T_air_K ** 4)
     R_n0 = absorbed_solar + (LWR_in - LWR_out_guess)  # W/m2
 
     # --- Chaleur sensible : g_H ---
     rho_air = 1.225
     c_p = 1005.0
-    leaf_size = Plant.get("leaf_size", 0.05)
+    leaf_size = Plant["leaf_size"]
 
     # Résistance aéro:
     c_coeff = 100.0
@@ -140,25 +138,19 @@ def approximate_leaf_temperature(Plant, Env):
     def saturation_vapor_pressure(TC):
         return 610.78 * math.exp(17.27 * TC / (TC+237.3))  # Pa
 
-    es_air = saturation_vapor_pressure(T_air_C)  # Pa
     # dérivée environ:
     # d es/dT ~ (es(T+0.1) - es(T-0.1)) / 0.2
     es_air_plus  = saturation_vapor_pressure(T_air_C + 0.1)
     es_air_minus = saturation_vapor_pressure(T_air_C - 0.1)
     Delta = (es_air_plus - es_air_minus) / 0.2  # Pa/°C
 
-    # e_a = RH * es(T_air_C)
-    e_a = RH * es_air
-
     # Hypothèse : r_total = r_a + r_stomatal
-    r_stomatal = Plant.get("r_stomatal", 100.0)
+    r_stomatal = Plant["r_stomatal"]
     r_total = r_a + r_stomatal
 
-    # On peut approx.  g_lambda ~ (lambda_vap * Delta / (r_total ...)) 
-    lambda_vap = 2.45e6  # J/kg
     # S’il faut plus de rigueur, Penman–Monteith introduit la “psychrometric constant” etc.
     # Simplifions:
-    g_lambda = 0.0
+    # g_lambda = 0.0
     # Par exemple, un ratio empirique:
     # g_lambda = ??? -> Cf. doc. On fait un ratio de la forme:
     #   E = (Delta * (T_leaf - T_air)) / (r_total * R_gas * T)
@@ -249,7 +241,7 @@ def adjust_leaf_params_angle(
     # 1) Sauvegarde de l'état initial
     gsmax= Fu.compute_stomatal_conductance_max(Plant)
     original_sc    = Plant["stomatal_conductance"]
-    original_angle = Plant.get("leaf_angle", 0.0)
+    original_angle = Plant["leaf_angle"]
 
 
     # Bornes pour la conductance
@@ -273,6 +265,7 @@ def adjust_leaf_params_angle(
             # On applique *temporairement* ces valeurs
             Plant["stomatal_conductance"] = sc_candidate
             Plant["leaf_angle"]           = angle_candidate
+            Plant["cost"]["transpiration"]["water"] = 0.0
 
             # 2) On fait le calcul complet:
             #   a) On convertit conduction -> r_stomatal si c'est ainsi dans le bilan :
@@ -298,33 +291,23 @@ def adjust_leaf_params_angle(
 
             photosynth = Plant["flux_in"]["sugar"]
             cost_water = Plant["cost"]["transpiration"]["water"] 
-            capacity   = Plant.get("max_transpiration_capacity", 1e-3)
+            capacity   = Plant["max_transpiration_capacity"]
             T_leaf     = Plant["temperature"]["photo"] 
-            T_opt      = Plant.get("T_optim", 25.0)
-            '''
-            print("with a Gs=", Plant["stomatal_conductance"]," and a leaf angle of :",Plant["leaf_angle"] )
-            print("photosynthesis estimate:", Plant["flux_in"]["sugar"])
-            print("transpiration estimate:", Plant["cost"]["transpiration"]["water"] )
-            print("Max transpiration", capacity )
-            print("leaf tempertature",  Plant["temperature"]["photo"]  )
-            print("air temp", Env["atmos"]["temperature"])
-            '''
+            T_opt      = Plant["T_optim"]
+
             # 3) Calcul des 3 sous-critières
             # (a) fT: T_leaf proche T_opt
-            diffT = abs(T_leaf - T_opt)
-            fT = 1.0 - min(1.0, diffT / max(1.0, T_opt))  
+            diffT = abs(T_leaf - Env["atmos"]["temperature"])
+            fT = 1.0 - min(1.0, diffT / max(1.0, Env["atmos"]["temperature"]))  
             # => si T_leaf = T_opt => fT=1, 
             #    si T_leaf s'éloigne fortement => fT tend vers 0
 
-            # (b) fW: cost_water proche capacity
             if capacity <= 0:
                 fW = 0.0
             else:
                 diffW = abs(cost_water - capacity)
                 ratioW = diffW / capacity
                 fW = 1.0 - min(1.0, ratioW)
-            # => si cost_water ~ capacity => fW ~1
-            #    si on dépasse bcp => fW plus faible
 
             # (c) fPhoto: normaliser la photosynth
             # ex: fPhoto = photosynth / (1 + photosynth)
@@ -343,10 +326,16 @@ def adjust_leaf_params_angle(
     Plant["stomatal_conductance"] = best_sc
     Plant["leaf_angle"]           = best_angle
     Plant["r_stomatal"]           = 1.0 / max(best_sc, 1e-6)
-
+    #print("with a Gs=", Plant["stomatal_conductance"]," and a leaf angle of :",Plant["leaf_angle"] )
+    #print("air temp", Env["atmos"]["temperature"])
     # 5) Recalcule les variables finales sur le "vrai" Plant
     compute_leaf_temperature(Plant, Env, method)
     Fu.photosynthesis(Plant, Env)
     Fu.compute_max_transpiration_capacity(Plant, Env)
-    Plant["flux_in"]["water"] = Plant["max_transpiration_capacity"] - Plant["cost"]["transpiration"]["water"]    # Fin
+    #print("photosynthesis estimate:", Plant["flux_in"]["sugar"])
+    #print("transpiration estimate:", Plant["cost"]["transpiration"]["water"] )
+    #print("Max transpiration", capacity )
+    #print("leaf tempertature",  Plant["temperature"]["photo"]  )
+    Plant["flux_in"]["water"] = (Plant["max_transpiration_capacity"] - 
+                                 Plant["cost"]["transpiration"]["water"] )
     return  # le Plant est mis à jour in-place

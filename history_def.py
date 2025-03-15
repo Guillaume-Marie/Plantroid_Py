@@ -24,6 +24,8 @@ history = {
     "soil_water": [],
     # Stomates / T
     "stomatal_conductance": [],
+    "leaf_angle": [],
+    "nutrient_index": [],
     "atmos_temperature": [],
     "leaf_temperature_after": [],   
     # Success cycles
@@ -32,6 +34,7 @@ history = {
     "max_transpiration_capacity": [],
     "raw_sugar_flux": [],
     "pot_sugar": [],
+    "actual_sugar": [],
     "atmos_light": [],  # luminosité ambiante
     "rain_event": [],   # pluie (g d’eau vers le sol)
     # Reserve used (bool -> 0 ou 1) pour 3 process
@@ -39,12 +42,8 @@ history = {
     "reserve_used_extension": [],
     "reserve_used_reproduction": [],   
     "reserve_used_transpiration": [],
-    "cost_transpiration_sugar": [], 
     "cost_transpiration_water": [], 
-    "cost_transpiration_nutrient": [],
     "cost_maintenance_sugar": [], 
-    "cost_maintenance_water": [], 
-    "cost_maintenance_nutrient": [],
     "cost_extension_sugar": [], 
     "cost_extension_water": [], 
     "cost_extension_nutrient": [],
@@ -90,6 +89,8 @@ def history_update(Plant, history, Environment, time):
         history["soil_water"].append(Environment["soil"]["water"])
         # stomates / T
         history["stomatal_conductance"].append(Plant["stomatal_conductance"])
+        history["leaf_angle"].append(Plant["leaf_angle"])  
+        history["nutrient_index"].append(Plant["nutrient_index"])  
         history["atmos_temperature"].append(Environment["atmos"]["temperature"])
         history["leaf_temperature_after"].append(Plant["temperature"]["photo"] )
         # succès
@@ -100,6 +101,7 @@ def history_update(Plant, history, Environment, time):
         history["max_transpiration_capacity"].append(Plant["max_transpiration_capacity"])
         history["raw_sugar_flux"].append(Plant["diag"].get("raw_sugar_flux", 0.0))
         history["pot_sugar"].append(Plant["diag"].get("pot_sugar", 0.0))
+        history["actual_sugar"].append(Plant["diag"].get("actual_sugar", 0.0))
         history["atmos_light"].append(Environment["atmos"]["light"])
         history["rain_event"].append(Environment["rain_event"])
 
@@ -115,12 +117,8 @@ def history_update(Plant, history, Environment, time):
         history["adjusted_used_reproduction"].append(1 if Plant["adjusted_used"]["reproduction"] else 0)
         history["adjusted_used_transpiration"].append(1 if Plant["adjusted_used"]["transpiration"] else 0)
 
-        history["cost_transpiration_sugar"].append(Plant["cost"]["transpiration"]["sugar"])
         history["cost_transpiration_water"].append(Plant["cost"]["transpiration"]["water"])
-        history["cost_transpiration_nutrient"].append(Plant["cost"]["transpiration"]["nutrient"])
         history["cost_maintenance_sugar"].append(Plant["cost"]["maintenance"]["sugar"])
-        history["cost_maintenance_water"].append(Plant["cost"]["maintenance"]["water"])
-        history["cost_maintenance_nutrient"].append(Plant["cost"]["maintenance"]["nutrient"])
         history["cost_extension_sugar"].append(Plant["cost"]["extension"]["sugar"])
         history["cost_extension_water"].append(Plant["cost"]["extension"]["water"])
         history["cost_extension_nutrient"].append(Plant["cost"]["extension"]["nutrient"])

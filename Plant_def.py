@@ -21,6 +21,8 @@ def set_plant_species(Plant, species_name, species_db):
     Plant["stomatal_conductance_min"] = params["stomatal_conductance_min"]
     Plant["leaf_angle"]               = params["leaf_angle"]            
     Plant["leaf_size"]                = params["leaf_size"]
+    Plant["leaf_albedo"]              = params["leaf_albedo"]  
+    Plant["leaf_emissivity"]          = params["leaf_emissivity"] 
     Plant["watt_to_sugar_coeff"]      = params["watt_to_sugar_coeff"]
     Plant["support_transport_coeff"]  = params["support_transport_coeff"]
     Plant["soil_supply_coeff"]        = params["soil_supply_coeff"]
@@ -43,6 +45,7 @@ def set_plant_species(Plant, species_name, species_db):
 # Plante initiale
 Plant = {
     "stomatal_conductance": 1.0,
+    "nutrient_index":  1.0,
     "trans_cooling" : 0.0,
     "temperature": {"photo": 0.0},
     "slai": 1.0,
@@ -90,15 +93,17 @@ species_db = {
         "temp_photo_sensitivity":      0.03,
         "sla_max":                     0.02, # gleaf/m2
         "stomatal_conductance_min":    0.01,
-        "leaf_angle":                  1.0,
+        "leaf_angle":                  0.0,
         "leaf_size":                   0.05, # m2
-        "watt_to_sugar_coeff":         4.3e-7,    # J/s ---> gC6H12O6/s
-        "support_transport_coeff":     5e-3,    # (g/s/MPa)/gsupport
+        "leaf_albedo":                 0.25,
+        "leaf_emissivity":             0.95,
+        "watt_to_sugar_coeff":         0.000063,   # J/s ---> gC6H12O6/s
+        "support_transport_coeff":     2e-2,    # (g/s/MPa)/gsupport
         "soil_supply_coeff":           0.1,
-        "water_nutrient_coeff":        8e-2,
-        "stomatal_density":            5.0e7,   # stomates/m²
+        "water_nutrient_coeff":        0.5,
+        "stomatal_density":            476516564,   # stomates/m²
         "alloc_change_rate":           Gl.delta_adapt/5,
-        "alloc_repro_max":             0.85,
+        "alloc_repro_max":             0.808978,
         "dessication_rate":            Gl.delta_adapt*3, 
         "support_turnover":            Gl.delta_adapt/20,
         "cost_params": {
@@ -108,7 +113,7 @@ species_db = {
                 "support":  {"sugar": 0.5,  "water": 0.75, "nutrient": 0.01}
             },
             "reproduction": {
-                "unique":   {"sugar": 0.5,  "water": 0.25, "nutrient": 0.03}
+                "unique":   {"sugar": 0.5,  "water": 0.75, "nutrient": 0.03}
             },
             "maintenance": {
                 "unique":   {"sugar": 5e-7, "water": 0.0, "nutrient": 0.0}
@@ -130,6 +135,10 @@ species_db = {
         "temp_photo_sensitivity":      0.03,
         "sla_max":                     0.02, # gleaf/m2
         "stomatal_conductance_min":    0.03,
+        "leaf_angle":                  0.0,
+        "leaf_size":                   0.05, # m2
+        "leaf_albedo":                 0.25,
+        "leaf_emissivity":             0.95,
         "watt_to_sugar_coeff":         4.0e-6,    # J/s ---> gC6H12O6/s
         "support_transport_coeff":     5e-3,    # (g/s/MPa)/gsupport
         "soil_supply_coeff":           0.1,
@@ -168,6 +177,10 @@ species_db = {
         "temp_photo_sensitivity":      0.03,
         "sla_max":                     0.02, # gleaf/m2
         "stomatal_conductance_min":    0.01,
+        "leaf_angle":                  0.0,
+        "leaf_size":                   0.05, # m2
+        "leaf_albedo":                 0.25,
+        "leaf_emissivity":             0.95,
         "watt_to_sugar_coeff":         1.7e-6,    # J/s ---> gC6H12O6/s
         "support_transport_coeff":     5e-3,    # (g/s/MPa)/gsupport
         "soil_supply_coeff":           0.1,
@@ -206,6 +219,10 @@ species_db = {
         "temp_photo_sensitivity":      0.05,
         "sla_max":                     0.02, # gleaf/m2
         "stomatal_conductance_min":    0.01,
+        "leaf_angle":                  0.0,
+        "leaf_size":                   0.05, # m2
+        "leaf_albedo":                 0.25,
+        "leaf_emissivity":             0.95,
         "watt_to_sugar_coeff":         1.7e-6,    # J/s ---> gC6H12O6/s
         "support_transport_coeff":     5e-3,    # (g/s/MPa)/gsupport
         "soil_supply_coeff":           0.1,
@@ -244,6 +261,10 @@ species_db = {
         "temp_photo_sensitivity":      0.05,
         "sla_max":                     0.02, # gleaf/m2
         "stomatal_conductance_min":    0.01,
+        "leaf_angle":                  0.0,
+        "leaf_size":                   0.05, # m2
+        "leaf_albedo":                 0.25,
+        "leaf_emissivity":             0.95,
         "watt_to_sugar_coeff":         1.7e-6,    # J/s ---> gC6H12O6/s
         "support_transport_coeff":     5e-3,    # (g/s/MPa)/gsupport
         "soil_supply_coeff":           0.1,
@@ -282,6 +303,10 @@ species_db = {
         "temp_photo_sensitivity":      0.05,
         "sla_max":                     0.02, # gleaf/m2
         "stomatal_conductance_min":    0.01,
+        "leaf_angle":                  0.0,
+        "leaf_size":                   0.05, # m2
+        "leaf_albedo":                 0.25,
+        "leaf_emissivity":             0.95,
         "watt_to_sugar_coeff":         1.7e-6,    # J/s ---> gC6H12O6/s
         "support_transport_coeff":     5e-3,    # (g/s/MPa)/gsupport
         "soil_supply_coeff":           0.1,
@@ -320,6 +345,10 @@ species_db = {
         "temp_photo_sensitivity":      0.05,
         "sla_max":                     0.02, # gleaf/m2
         "stomatal_conductance_min":    0.01,
+        "leaf_angle":                  0.0,
+        "leaf_size":                   0.05, # m2
+        "leaf_albedo":                 0.25,
+        "leaf_emissivity":             0.95,
         "watt_to_sugar_coeff":         1.7e-6,    # J/s ---> gC6H12O6/s
         "support_transport_coeff":     5e-3,    # (g/s/MPa)/gsupport
         "soil_supply_coeff":           0.1,
@@ -358,6 +387,10 @@ species_db = {
         "temp_photo_sensitivity":      0.03,
         "sla_max":                     0.02, # gleaf/m2
         "stomatal_conductance_min":    0.01,
+        "leaf_angle":                  0.0,
+        "leaf_size":                   0.05, # m2
+        "leaf_albedo":                 0.25,
+        "leaf_emissivity":             0.95,
         "watt_to_sugar_coeff":         1.7e-6,    # J/s ---> gC6H12O6/s
         "support_transport_coeff":     5e-3,    # (g/s/MPa)/gsupport
         "soil_supply_coeff":           0.1,

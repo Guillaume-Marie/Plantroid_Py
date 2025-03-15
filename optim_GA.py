@@ -6,7 +6,7 @@ import Plant_def as Pl
 import Environnement_def as Ev
 import history_def as Hi
 import global_constants as Gl
-import run_and_plot as Rp
+import run_and_plot_v2 as Rp
 
 def ga_multi_criteria_optimization(
     species_name = "Ble",
@@ -39,10 +39,6 @@ def ga_multi_criteria_optimization(
       - Contrainte: B_min <= B_final <= B_max
       - Contrainte: fraction_sucre ∈ [reprod_frac_min..reprod_frac_max]
       - stability_score: lié à la pente finale (plus la pente est proche de 0, mieux c'est).
-    
-    Paramètres à optimiser:
-      "r_max", "alpha", "dessication_rate",
-      "root_absorption_coefficient", "transpiration_coefficient"
 
     Paramètres GA:
       population_size, generations, crossover_rate, mutation_rate, elite_size
@@ -52,10 +48,9 @@ def ga_multi_criteria_optimization(
     # ----------------------------------------------------------------
     # 1) Bornes des 5 paramètres
     param_bounds = {
-        "r_max": (0.001, 0.01),
-        "alpha": (0.0001, 0.001),
-        "light_absorption_max": (0.3, 1.0),
-        "stomatal_density": (1e6, 1e7)
+        "watt_to_sugar_coeff": (1e-4,1e-6 ),
+        "alloc_repro_max": (0.5, 1.0),
+        "stomatal_density": (5.0e6,5.0e8)
     }
     param_names = list(param_bounds.keys())
 
@@ -83,8 +78,9 @@ def ga_multi_criteria_optimization(
         env_copy = copy.deepcopy(Ev.Environment)
 
         # Applique les paramètres
-        plant_copy["r_max"] = individual["r_max"]
-        plant_copy["alpha"] = individual["alpha"]
+        plant_copy["watt_to_sugar_coeff"] = individual["watt_to_sugar_coeff"]
+        plant_copy["alloc_repro_max"] = individual["alloc_repro_max"]
+        plant_copy["stomatal_density"] = individual["stomatal_density"]
 
         # Sauvegarde l’état global
         original_plant = Pl.Plant
@@ -297,10 +293,11 @@ if __name__ == "__main__":
         crossover_rate=0.7,
         mutation_rate=0.1,
         elite_size=2,
-        B_max=200.0,
-        BT_min=150.0,
-        BT_max=250.0,
-        BL_min=200.0,
+        B_max=4.0,
+        B_min=2.0,   
+        BT_min=2.0,
+        BT_max=4.0,
+        BL_min=0.0,
         BL_max=0.1,
         alpha_biomass=1.0,
         alpha_leaving=1.0,
