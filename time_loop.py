@@ -32,6 +32,7 @@ def run_simulation_collect_data(max_cycles):
     day_min_temp = float('inf')  # Pour stocker la T min courante de la journée
     previous_day_index = 0       # Pour savoir quand on change de jour
     Ev.Environment["soil"]["water"] = Ev.Environment["soil_volume"]* 1000 * 1000 * 0.5
+    Pl.Plant["max_biomass"] = Pl.Plant["biomass_total"]
 
     while Pl.Plant["alive"] and cycle_count < max_cycles:
         time += 1
@@ -63,7 +64,12 @@ def run_simulation_collect_data(max_cycles):
         Pl.Plant["temperature"]["photo"] = Ev.Environment["atmos"]["temperature"]
 
         if day_index != previous_day_index:
+            #print(np.mean(Hi.history["stomatal_conductance"][-24:]))
             # reset stomatal conductance everyday
+            if (len(Hi.history["stomatal_conductance"][-24:]) >= 24 and 
+                np.mean(Hi.history["stomatal_conductance"][-24:])< 0.9):
+                #print("adjust alloc !")
+                Fu.adapt_water_supply(Pl.Plant, Ev.Environment) 
             Pl.Plant["stomatal_conductance"] = 1.0
             Pl.Plant["leaf_angle"] = 0.0
             # 1. Phenology
@@ -89,14 +95,12 @@ def run_simulation_collect_data(max_cycles):
         #Ev.Environment_hazards(Pl.Plant, Ev.Environment)
 
         # 2. Calcul des coûts
-        Pl.Plant["new_biomass"] = Fu.calculate_potential_new_biomass(Pl.Plant)
+        Pl.Plant["new_biomass"] = Fu.calculate_potential_new_biomass(Pl.Plant, Pl.Plant["biomass_total"])
+        Pl.Plant["max_biomass"] += Pl.Plant["new_biomass"]
         Fu.calculate_cost(Pl.Plant, Ev.Environment, "maintenance")
-        if Ev.Environment["atmos"]["light"] > 0.0:
-            Fu.calculate_cost(Pl.Plant, Ev.Environment, "extension")
-            Fu.calculate_cost(Pl.Plant, Ev.Environment,"reproduction")
         
         if  (Pl.Plant["phenology_stage"] != "dormancy") and  Ev.Environment["atmos"]["light"] > 0.0:
-            # 3. Transpiration
+            # 3.1 Transpiration
             Be.adjust_leaf_params_angle(
                         Pl.Plant,
                         Ev.Environment,
@@ -109,6 +113,10 @@ def run_simulation_collect_data(max_cycles):
 
         # 5. Maintenance
         Fu.handle_process(Pl.Plant, Ev.Environment, "maintenance")
+
+        if Ev.Environment["atmos"]["light"] > 0.0:
+            Fu.calculate_cost(Pl.Plant, Ev.Environment, "extension")
+            Fu.calculate_cost(Pl.Plant, Ev.Environment,"reproduction")
 
         if Ev.Environment["atmos"]["light"] > 0.0:
             # 6. Reproduction
@@ -124,19 +132,13 @@ def run_simulation_collect_data(max_cycles):
                 #7. extension
                 Fu.handle_process(Pl.Plant, Ev.Environment, "extension")
                 Fu.update_success_history(Pl.Plant, "extension")  
-                # 9. Water stress adaptation
-                if Pl.Plant["adjusted_used"]["extension"]:
-                    Fu.adapt_water_supply(Pl.Plant, Ev.Environment) 
-
 
             # 8. Réserves
-            if Ev.Environment["atmos"]["light"] > 0.0:
-                Fu.refill_reserve(Pl.Plant, "sugar")
-                Fu.refill_reserve(Pl.Plant, "water")
-                Fu.refill_reserve(Pl.Plant, "nutrient")
+            Fu.refill_reserve(Pl.Plant, "sugar")
+            Fu.refill_reserve(Pl.Plant, "water")
+            Fu.refill_reserve(Pl.Plant, "nutrient")
 
         #Fu.destroy_biomass(Pl.Plant, Ev.Environment, "necromass","none",Gl.delta_adapt)
-
 
         # -- Vérification : si un pool ou un flux est négatif, on arrête --
         # (juste avant l'enregistrement dans l'historique)

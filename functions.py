@@ -1,7 +1,9 @@
 import global_constants as Gl
+import history_def as Hi
 import Environnement_def as Ev
 import global_constants as Gl
 import math
+
 #######################################
 #         FONCTIONS DE SANTÉ          #
 #######################################
@@ -60,6 +62,34 @@ def check_for_negatives(Plant, Env, time):
 
     # 3) Aucune erreur trouvée
     return False
+
+
+import numpy as np
+
+def slope_last_hours(history, nb_hours=72):
+    """
+    Calcule la pente d'une régression linéaire
+    sur les nb_hours derniers pas de temps de history[var_name].
+    
+    history : dictionnaire contenant notamment history[var_name] (liste ou array)
+    var_name : nom de la variable, ex. "reserve_sugar"
+    nb_hours : nombre d'heures sur lesquelles faire la régression (72 = 3 jours)
+    
+    Renvoie le slope (pente) en unités de var_name par pas de temps.
+    """
+    if len(history) < nb_hours:
+        # si on n'a pas assez de points, on renvoie zéro ou None
+        return 0.0
+
+    # Extraction des nb_hours derniers points
+    data = history[-nb_hours:]
+    x = np.arange(len(data), dtype=float)  # 0..(nb_hours-1)
+    y = np.array(data, dtype=float)
+
+    # Ajustement linéaire : slope, intercept
+    slope, intercept = np.polyfit(x, y, 1)
+    return slope
+
 
 def degrade_health_state(Plant):
     """
@@ -131,22 +161,21 @@ def ensure_maintenance_sugar(Plant, Env):
     # 4) Sinon, on détruit de la biomasse vivante pour libérer du sucre
     #    Hypothèse simplifiée : 1 g de biomasse => cannibal_ratio g de sucre
     # ------------------------------------------------------------
-    cannibal_ratio = 0.3  # exemple : 1 g de biomasse détruite libère 0.3 g de sucre
 
     # On procède dans un ordre défini (ex: 'photo' puis 'support' puis 'absorp')
-    compartments_order = ["photo", "support", "absorp"]
+    compartments_order = ["photo","absorp","support"]
     
     # Combien de grammes de biomasse nous faut-il détruire ?
     # shortfall = mass_to_destroy * cannibal_ratio
     # => mass_to_destroy = shortfall / cannibal_ratio
-    mass_to_destroy = shortfall / cannibal_ratio
+    mass_to_destroy = shortfall / Plant["cannibal_ratio"]
     
     for comp in compartments_order:
         if mass_to_destroy <= 0:
             break  # on a déjà couvert le besoin
         if Plant["biomass"][comp] > 0:
             # quantité qu'on peut détruire sur ce compartiment
-            can_destroy = Plant["biomass"][comp]
+            can_destroy = Plant["biomass"][comp]*0.05
             destroy_here = min(can_destroy, mass_to_destroy)
             
             # 1) On détruit effectivement la biomasse
@@ -157,7 +186,7 @@ def ensure_maintenance_sugar(Plant, Env):
             else: 
                 Plant["biomass"]["necromass"] += destroy_here
             # 2) On récupère le sucre correspondant
-            sugar_recovered = destroy_here * cannibal_ratio
+            sugar_recovered = destroy_here * Plant["cannibal_ratio"]
             
             # 3) On ajoute ce sucre à flux_in ou reserve, pour payer la maintenance
             #    ici, on choisit par ex. d'ajouter dans flux_in["sugar"]
@@ -200,11 +229,10 @@ def refill_reserve(Plant, rsc):
 #      FONCTIONS PHYSIOLOGIQUES FLUX BASED      #
 #################################################
 
-def calculate_potential_new_biomass(Plant):
+def calculate_potential_new_biomass(Plant, bm_total):
     """
     Forme monomoléculaire : new_biomass = biomasse_totale * (r_max / (1 + alpha * biomasse_totale))
     """
-    bm_total = Plant["biomass_total"]
     r_max = Plant["r_max"]
     alpha = Plant["alpha"]
     return bm_total * (r_max / (1.0 + alpha * bm_total))
@@ -511,7 +539,7 @@ def calculate_cost(Plant, Env, process):
     if process == "reproduction":
         for r in Gl.resource:
             cost_factor = Plant["cost_params"][process]["unique"][r]
-            Plant["cost"][process][r] = cost_factor * Plant["new_biomass"]
+            Plant["cost"][process][r] = cost_factor * Plant["reproduction_ref"]* (0.1/24)
     elif process == "maintenance":
         cost_factor = Plant["cost_params"][process]["unique"]["sugar"]
         # Coût proportionnel à la biomasse totale et au temps
@@ -715,7 +743,7 @@ def dessication(Plant, Env):
 
     destroy_biomass(Plant, Env, "absorp","extension", Plant["dessication_rate"])
     destroy_biomass(Plant, Env, "photo","extension", Plant["dessication_rate"])
-    destroy_biomass(Plant, Env, "repro","reproduction", Plant["dessication_rate"])
+    #destroy_biomass(Plant, Env, "repro","reproduction", Plant["dessication_rate"])
 
 
 def update_biomass_total(Plant):
@@ -747,7 +775,7 @@ def adjust_success_cycle(Plant, process):
     """
     success_cycle = new_biomass / (biomass_total * croissance attendue).
     """
-    expected = calculate_potential_new_biomass(Plant)
+    expected = Plant["max_biomass"]
     if expected > 0:
         Plant["success_cycle"][process] = Plant["new_biomass"] / expected
     else:
@@ -778,12 +806,20 @@ def manage_phenology(Plant, Env, day_index, daily_min_temps):
             return
         return
     
+    sugar_slope = slope_last_hours(Hi.history["reserve_sugar"], nb_hours=24*3)
+    #print("sugar_slope:", sugar_slope)
     # Déclenchement de la reproduction
-    if photoperiod_today >= Plant["photoperiod_for_repro"]:
+    #photoperiod_today >= Plant["photoperiod_for_repro"] or 
+    if (sugar_slope < 0.0 and
+        Plant["phenology_stage"] != "reproduction"):
+        #print("reproduction time !")
         if Plant["growth_type"] == "biannual" and day_index > 365:
             Plant["phenology_stage"] = "reproduction"
-        elif Plant["growth_type"] != "biannual":
+        elif Plant["growth_type"] == "annual":
+            Plant["reproduction_ref"] = Plant["biomass_total"]
             Plant["phenology_stage"] = "reproduction"
+        elif Plant["growth_type"] == "perennial":
+            Plant["phenology_stage"] = "making_reserve"           
         return
 
     # Détection de la réduction photopériodique
@@ -795,12 +831,12 @@ def manage_phenology(Plant, Env, day_index, daily_min_temps):
              Plant["phenology_stage"] != "making_reserve" and
              day_index > 365):
             Plant["phenology_stage"] = "dessication"
-            Plant["ratio_allocation"]["repro"] = 0.0
+            #Plant["ratio_allocation"]["repro"] = 0.0
             check_allocation(Plant)
         elif (photoperiod_today < Plant["photoperiod_for_repro"] and 
              Plant["phenology_stage"] != "dessication"):
-            Plant["phenology_stage"] = "dessication"
-            Plant["ratio_allocation"]["repro"] = 0.0
+            #Plant["phenology_stage"] = "dessication"
+            #Plant["ratio_allocation"]["repro"] = 0.0
             check_allocation(Plant)
         return
 

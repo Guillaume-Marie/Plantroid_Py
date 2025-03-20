@@ -62,7 +62,8 @@ history = {
     "ratio_repro": [],
     # Stress
     "stress_sugar": [],
-    "stress_water": []
+    "stress_water": [],
+    "max_biomass": []
 }
 
 def history_update(Plant, history, Environment, time):
@@ -73,7 +74,8 @@ def history_update(Plant, history, Environment, time):
         history["biomass_photo"].append(Plant["biomass"]["photo"])
         history["biomass_absorp"].append(Plant["biomass"]["absorp"])
         history["biomass_repro"].append(Plant["biomass"]["repro"])
-        history["biomass_necromass"].append(Plant["biomass"]["necromass"])
+        history["biomass_necromass"].append(Plant["biomass"]["necromass"])        
+        history["max_biomass"].append(Plant["max_biomass"])
         # slai, santé
         history["slai"].append(Plant["slai"])
         history["health_state"].append(Plant["health_state"])

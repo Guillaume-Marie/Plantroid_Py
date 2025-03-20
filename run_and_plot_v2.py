@@ -66,7 +66,13 @@ def simulate_and_plot(species_name):
     data, final_Plant, final_env = Ti.run_simulation_collect_data(Gl.max_cycles)
     day_data, night_data = aggregate_day_night(data)
 
-    day_fig, day_axes = plt.subplots(nrows=5, ncols=4, figsize=(65, 35))
+    day_fig, day_axes = plt.subplots(nrows=5, ncols=4, figsize=(65, 35), 
+                        sharex='col', gridspec_kw=dict(hspace=0.3,
+                                                       wspace=0.2,
+                                                       top=0.96,
+                                                       right=0.96,
+                                                       left=0.03,
+                                                       bottom=0.05))
     day_fig.suptitle("", fontsize=16)
 
     # ------------------------------------------------------------------
@@ -75,6 +81,7 @@ def simulate_and_plot(species_name):
     # Biomasse => vert, Nécromasse => marron
     day_axes[0,0].plot(day_data["time"], day_data["biomass_total"], label="Biomasse", color="green")
     day_axes[0,0].plot(day_data["time"], day_data["biomass_necromass"], label="Nécromasse", color="brown")
+    day_axes[0,0].plot(day_data["time"], day_data["max_biomass"], label="Theoric", color="black", linestyle="dotted")
     day_axes[0,0].set_xlabel("Jour")
     day_axes[0,0].set_ylabel("Biomasse (g)")
     day_axes[0,0].set_title("Évolution : vivante vs nécromasse")

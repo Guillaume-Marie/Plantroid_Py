@@ -34,6 +34,7 @@ def set_plant_species(Plant, species_name, species_db):
     Plant["support_turnover"]         = params["support_turnover"]   
     Plant["storage_fraction"]         = params["storage_fraction"]
     Plant["ratio_allocation"]         = params["ratio_allocation"]
+    Plant["cannibal_ratio"]           = params["cannibal_ratio"]   
     Plant["cost_params"]              = params["cost_params"]
     Plant["storage_fraction"]         = params["storage_fraction"]
     Plant["ratio_allocation"]         = params["ratio_allocation"] 
@@ -73,6 +74,8 @@ Plant = {
     "success_history": {"extension": [], "reproduction": []},
     "success_cycle":   {"extension": 1.0, "reproduction": 1.0},
     "new_biomass": 0.0,
+    "max_biomass":  0.0,
+    "reproduction_ref": 0.0,
     "max_transpiration_capacity": 0.0,
     "biomass": {"support": 0, 
                 "photo":   0, 
@@ -86,10 +89,10 @@ Plant = {
 species_db = {
     "ble": {
         "growth_type":                "annual",
-        "photoperiod_for_repro":       15.5, # in hours
+        "photoperiod_for_repro":       16, # in hours
         "T_optim":                     22.0, 
-        "r_max":                       4.70e-3, # 0.00533
-        "alpha":                       8.13e-4,
+        "r_max":                       5.0e-3, # 
+        "alpha":                       8.00e-4,
         "temp_photo_sensitivity":      0.03,
         "sla_max":                     0.02, # gleaf/m2
         "stomatal_conductance_min":    0.01,
@@ -100,12 +103,13 @@ species_db = {
         "watt_to_sugar_coeff":         0.000063,   # J/s ---> gC6H12O6/s
         "support_transport_coeff":     2e-2,    # (g/s/MPa)/gsupport
         "soil_supply_coeff":           0.1,
-        "water_nutrient_coeff":        0.5,
+        "water_nutrient_coeff":        3.5e-4,
         "stomatal_density":            476516564,   # stomates/m²
         "alloc_change_rate":           Gl.delta_adapt/5,
-        "alloc_repro_max":             0.808978,
+        "alloc_repro_max":             1.0,
         "dessication_rate":            Gl.delta_adapt*3, 
         "support_turnover":            Gl.delta_adapt/20,
+        "cannibal_ratio":              0.3,  #1 g de biomasse détruite libère 0.3 g de sucre
         "cost_params": {
             "extension": {
                 "photo":    {"sugar": 0.5,  "water": 0.75, "nutrient": 0.02},
