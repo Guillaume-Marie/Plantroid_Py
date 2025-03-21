@@ -19,7 +19,7 @@ def leaf_energy_balance_plantroid(T_leaf_K, Plant, Env):
     shortwave_solar = Env["atmos"]["light"]                     # W·m^-2
     LWR_in          = Env["atmos"]["longwave"]
     T_air_C         = Env["atmos"]["temperature"]               # °C
-    RH              = Env["atmos"]["RH"]
+    rh              = Env["atmos"]["RH"]
     wind_speed      = Env["atmos"]["wind"]
 
     # --- 2) Depuis Plant ---
@@ -44,14 +44,13 @@ def leaf_energy_balance_plantroid(T_leaf_K, Plant, Env):
     R_n = absorbed_solar + (LWR_in - LWR_out)
 
     # --- b) Flux de chaleur sensible H ---
-    c_coeff = 100.0
-    r_a = c_coeff * np.sqrt(leaf_size / max(wind_speed, 0.1))
-    H = (Gl.RHO_AIR * Gl.CP_AIR / r_a) * (T_leaf_K - T_air_K)
+    r_a = Gl.c_coeff * np.sqrt(leaf_size / max(wind_speed, 0.1))
+    h = (Gl.RHO_AIR * Gl.CP_AIR / r_a) * (T_leaf_K - T_air_K)
 
     # --- c) Flux de chaleur latente (lambda E) ---
     e_s_leaf = saturation_vapor_pressure(T_leaf_C)
     e_s_air  = saturation_vapor_pressure(T_air_C)
-    e_a = RH * e_s_air
+    e_a = rh * e_s_air
 
     r_total = r_stomatal + r_a
     delta_e = max(0.0, e_s_leaf - e_a)  # Pa
@@ -64,7 +63,7 @@ def leaf_energy_balance_plantroid(T_leaf_K, Plant, Env):
     total_leaf_surface = Plant["biomass"]["photo"] *Plant["sla_max"] * Plant["slai"]
     Plant["cost"]["transpiration"]["water"] = E_mass * 1000 * Gl.DT * total_leaf_surface
     # --- d) Bilan ---
-    balance = R_n - H - lambdaE
+    balance = R_n - h - lambdaE
     return balance
 
 def newton_leaf_temperature(Plant, Env, T_guess, max_iter=2, delta=0.01):
@@ -107,7 +106,6 @@ def approximate_leaf_temperature(Plant, Env):
 
     T_air = Env["atmos"]["temperature"]  # °C
     wind_speed = Env["atmos"]["wind"]
-    RH = Env["atmos"]["RH"]
     LWR_in = Env["atmos"]["longwave"]  # W/m2
 
     # Convert °C -> K
@@ -123,20 +121,15 @@ def approximate_leaf_temperature(Plant, Env):
     R_n0 = absorbed_solar + (LWR_in - LWR_out_guess)  # W/m2
 
     # --- Chaleur sensible : g_H ---
-    rho_air = 1.225
-    c_p = 1005.0
     leaf_size = Plant["leaf_size"]
 
     # Résistance aéro:
-    c_coeff = 100.0
-    r_a = c_coeff * math.sqrt(leaf_size / max(wind_speed, 0.1))  # s/m
-    g_H = (rho_air * c_p) / r_a  # W/(m2.K)  (cf. eq. H = g_H * (T_leaf - T_air))
+    r_a = Gl.c_coeff * math.sqrt(leaf_size / max(wind_speed, 0.1))  # s/m
+    g_H = (Gl.RHO_AIR * Gl.CP_AIR) / r_a  # W/(m2.K)  (cf. eq. H = g_H * (T_leaf - T_air))
 
     # --- Latente : g_lambda ---
     # 1) Derivée e_s'(T) ~ e_s'(T_air)
     T_air_C = T_air  # en °C
-    def saturation_vapor_pressure(TC):
-        return 610.78 * math.exp(17.27 * TC / (TC+237.3))  # Pa
 
     # dérivée environ:
     # d es/dT ~ (es(T+0.1) - es(T-0.1)) / 0.2
@@ -293,7 +286,6 @@ def adjust_leaf_params_angle(
             cost_water = Plant["cost"]["transpiration"]["water"] 
             capacity   = Plant["max_transpiration_capacity"]
             T_leaf     = Plant["temperature"]["photo"] 
-            T_opt      = Plant["T_optim"]
 
             # 3) Calcul des 3 sous-critières
             # (a) fT: T_leaf proche T_opt

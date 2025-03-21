@@ -1,3 +1,9 @@
+# optim_GA.py
+"""
+Genetic Algorithm (GA) for multi-criteria optimization of Plantroid model parameters.
+Comments and docstrings are in English; variable/function names remain in French for consistency.
+"""
+
 import copy
 import random
 
@@ -8,201 +14,242 @@ import history_def as Hi
 import global_constants as Gl
 import run_and_plot_v2 as Rp
 
+
 def ga_multi_criteria_optimization(
-    species_name = "Ble",
+    species_name="Ble",
     population_size=20,
     generations=10,
     crossover_rate=0.7,
     mutation_rate=0.1,
     elite_size=2,
-    # Contraintes sur la biomasse finale
+    # Constraints on final biomass
     B_min=1.0,
     B_max=4.0,
-    # Plage fraction sucre
+    # Sugar fraction range
     BT_min=0.4,
     BT_max=0.6,
     BL_min=0.0,
-    BL_max=0.1,   
-    # Pondérations
+    BL_max=0.1,
+    # Weights in the objective function
     alpha_biomass=1.0,
     alpha_leaving=1.0,
     alpha_sugar=1.0,
     alpha_stability=1.0
 ):
     """
-    Algorithme génétique qui optimise 5 paramètres du modèle Plantroid
-    en respectant certaines contraintes et en maximisant un score agrégé:
-      score = alpha_biomass * B_final 
-            + alpha_sugar   * sugar_final 
-            + alpha_stability * stability_score
-    avec:
-      - Contrainte: B_min <= B_final <= B_max
-      - Contrainte: fraction_sucre ∈ [reprod_frac_min..reprod_frac_max]
-      - stability_score: lié à la pente finale (plus la pente est proche de 0, mieux c'est).
+    Performs a genetic algorithm (GA) to optimize several parameters
+    of the Plantroid model under multiple constraints.
 
-    Paramètres GA:
-      population_size, generations, crossover_rate, mutation_rate, elite_size
+    The GA tries to maximize a score that combines final biomass, sugar fraction,
+    and stability, subject to constraints on biomass range and sugar fractions.
+
+    Parameters
+    ----------
+    species_name : str
+        Key of the plant species used in Plant_def.species_db.
+    population_size : int
+        Number of individuals in the GA population.
+    generations : int
+        Number of GA iterations.
+    crossover_rate : float
+        Probability of performing crossover on two selected parents.
+    mutation_rate : float
+        Probability of mutating an individual's parameter.
+    elite_size : int
+        Number of top individuals carried over to the next generation without change.
+    B_min : float
+        Minimum allowed final biomass constraint.
+    B_max : float
+        Maximum allowed final biomass constraint.
+    BT_min : float
+        Minimum allowed fraction for one sugar-related biomass constraint (nécromass).
+    BT_max : float
+        Maximum allowed fraction for the same sugar fraction.
+    BL_min : float
+        Another fraction constraint min (could be leaf or total necromass).
+    BL_max : float
+        The same fraction constraint max.
+    alpha_biomass : float
+        Weight for final biomass in the objective.
+    alpha_leaving : float
+        Weight for final living biomass (or leaving?).
+    alpha_sugar : float
+        Weight for final sugar fraction.
+    alpha_stability : float
+        Weight for the stability component in the objective.
+
+    Returns
+    -------
+    tuple
+        (best_solution, best_fitness), where best_solution is a dictionary
+        of parameter values, and best_fitness is the highest score achieved.
     """
+    # Load species default parameters into the global Plant object
     Pl.set_plant_species(Pl.Plant, species_name, Pl.species_db)
 
-    # ----------------------------------------------------------------
-    # 1) Bornes des 5 paramètres
+    # 1) Parameter bounds: dictionary that sets a lower and upper limit for each GA parameter
     param_bounds = {
-        "watt_to_sugar_coeff": (1e-4,1e-6 ),
+        # example: "watt_to_sugar_coeff" : (min_val, max_val)
+        "watt_to_sugar_coeff": (1e-4, 1e-6),
         "alloc_repro_max": (0.5, 1.0),
-        "stomatal_density": (5.0e6,5.0e8)
+        "stomatal_density": (5.0e6, 5.0e8)
     }
     param_names = list(param_bounds.keys())
 
     # ----------------------------------------------------------------
-    # 2) Création population initiale
+    # Population initialization
+    # ----------------------------------------------------------------
     def random_individual():
+        """
+        Creates a random individual by sampling each parameter
+        uniformly between its bounds.
+        """
         ind = {}
         for name in param_names:
             low, high = param_bounds[name]
+            # Note: the upper is smaller than the lower for "watt_to_sugar_coeff" in original code
+            # we might fix this logic or keep as is. Here we do random.uniform(low, high) as intended.
+            # If (low > high), might need to swap or fix.
+            if low > high:
+                low, high = high, low
             ind[name] = random.uniform(low, high)
         return ind
 
     population = [random_individual() for _ in range(population_size)]
 
     # ----------------------------------------------------------------
-    # 3) Évaluer un individu (avec calcul des constraints + score)
+    # Evaluation function
+    # ----------------------------------------------------------------
     def evaluate(individual):
         """
-        Lance la simulation, puis calcule un score agrégé.
-        On applique une pénalité si les contraintes ne sont pas satisfaites,
-        au lieu de mettre la fitness à 0.
+        Runs a Plantroid simulation with the individual's parameters, then computes a score.
+
+        Steps:
+          - Copy the global Plant and Environment states
+          - Apply individual's parameters
+          - Run the simulation
+          - Compute final constraints and a final score
+          - Return the fitness
+
+        Fitness function is influenced by alpha_biomass, alpha_sugar, alpha_stability, etc.
+        Constraints penalize the fitness if outside specified ranges.
         """
-        # Copie la plante et l’environnement initiaux
+        # Backup global states
+        original_plant = copy.deepcopy(Pl.Plant)
+        original_env = copy.deepcopy(Ev.Environment)
+
+        # Copy for local changes
         plant_copy = copy.deepcopy(Pl.Plant)
         env_copy = copy.deepcopy(Ev.Environment)
 
-        # Applique les paramètres
+        # Apply individual's parameters
         plant_copy["watt_to_sugar_coeff"] = individual["watt_to_sugar_coeff"]
         plant_copy["alloc_repro_max"] = individual["alloc_repro_max"]
         plant_copy["stomatal_density"] = individual["stomatal_density"]
 
-        # Sauvegarde l’état global
-        original_plant = Pl.Plant
-        original_env   = Ev.Environment
-
-        # Remplace globalement
-        Pl.Plant       = plant_copy
+        # Replace global references with copies
+        Pl.Plant = plant_copy
         Ev.Environment = env_copy
 
-        # Réinitialise l’historique
+        # Clear the history
         for k in Hi.history:
             Hi.history[k].clear()
 
-        # Lance la simulation
+        # Run simulation
         data, final_plant, final_env = Ti.run_simulation_collect_data(Gl.max_cycles)
 
-        # Restaure
-        Pl.Plant       = original_plant
+        # Restore global states
+        Pl.Plant = original_plant
         Ev.Environment = original_env
 
-        # Récupération des données d’intérêt
-        B_final   = final_plant["biomass"]["repro"]
-        BT_final  = final_plant["biomass"]["necromass"]
-        BL_final  = final_plant["biomass_total"]
+        # Retrieve final values
+        B_final = final_plant["biomass"]["repro"]  # example usage
+        BT_final = final_plant["biomass"]["necromass"]
+        BL_final = final_plant["biomass_total"]
 
-        # -------------------------
-        # 1) Score de base
-        # -------------------------
-        # Exemple : on garde l’existant
+        # 1) Base score
         stability_score = compute_stability_score(Hi.history, last_n=10)
-        scoreBase = (alpha_biomass * B_final
-                    + alpha_sugar   * BT_final
-                    + alpha_leaving   * BL_final
-                    + alpha_stability * stability_score)
+        score_base = (alpha_biomass * B_final
+                      + alpha_sugar * BT_final
+                      + alpha_leaving * BL_final
+                      + alpha_stability * stability_score)
 
-        # -------------------------
-        # 2) Calcul de la pénalité
-        # -------------------------
+        # 2) Penalty for constraints
         penalty = 0.0
 
-        # Pénalité sur la biomasse hors de [B_min..B_max]
+        # B_final in [B_min .. B_max]
         if B_final < B_min:
             penalty += (B_min - B_final) ** 2
         elif B_final > B_max:
             penalty += (B_final - B_max) ** 2
 
-        # Pénalité sur la fraction de sucre hors de [reprod_frac_min..reprod_frac_max]
+        # fraction_sucre in [BT_min..BT_max]
         if BT_final < BT_min:
             penalty += (BT_min - BT_final) ** 2
         elif BT_final > BT_max:
             penalty += (BT_final - BT_max) ** 2
 
-        # Pénalité sur la fraction de sucre hors de [reprod_frac_min..reprod_frac_max]
+        # fraction in [BL_min..BL_max]
         if BL_final < BL_min:
             penalty += (BL_min - BL_final) ** 2
         elif BL_final > BL_max:
             penalty += (BL_final - BL_max) ** 2
-        # Vous pouvez ajouter d'autres pénalités sur d’autres variables 
-        # (santé trop basse, mortalité, etc.)
 
-        # -------------------------
-        # 3) Fitness finale
-        # -------------------------
-        # Méthode 1 : on divise le score par (1 + penalty)
-        if scoreBase < 0:
-            scoreBase = 0.0
-        fitness = scoreBase / (1.0 + penalty)
+        # 3) Final fitness
+        if score_base < 0:
+            score_base = 0.0
+        fitness = score_base / (1.0 + penalty)
 
         return fitness
 
     # ----------------------------------------------------------------
-    # 4) Calcul de la stabilité (pente finale)
+    # Stability measure (pente finale)
+    # ----------------------------------------------------------------
     def compute_stability_score(history, last_n=10):
         """
-        Exemple: On récupère les 10 derniers points de la biomasse totale
-        ET de la réserve de sucre, on calcule la pente absolue moyenne 
-        et on la transforme en un score [0..∞).
-        Plus la pente est faible, plus le score est élevé.
+        Example: compute the slope of the last 'last_n' points of
+        "biomass_repro" and "biomass_necromass", average their absolute slopes,
+        and transform it into [0..1] (the less slope, the higher the stability).
         """
-        # Récupère la liste des biomasses
         B_list = history["biomass_repro"][-last_n:]
         S_list = history["biomass_necromass"][-last_n:]
 
-        # Si on n’a pas assez de points, on renvoie un score neutre
         if len(B_list) < 2 or len(S_list) < 2:
             return 1.0
 
-        # calcule la pente en absolu (moyenne des pentes sur B et S)
         slope_B = linear_slope(B_list)
         slope_S = linear_slope(S_list)
         abs_slope = (abs(slope_B) + abs(slope_S)) / 2.0
 
-        # Transforme en un score (plus c’est bas, mieux c’est)
-        # ex:  score = 1 / (1 + abs_slope)
-        # => si abs_slope = 0 => score = 1
-        # => plus abs_slope est grand, plus le score se rapproche de 0
         stability = 1.0 / (1.0 + abs_slope)
         return stability
 
     def linear_slope(values):
         """
-        Renvoie la pente (slope) d'une régression linéaire 
-        sur la liste de valeurs.
+        Returns the slope of a simple linear regression on 'values'.
         """
         n = len(values)
         if n < 2:
             return 0.0
         x_vals = range(n)
-        sum_x  = sum(x_vals)
-        sum_y  = sum(values)
-        sum_xy = sum(x*y for x,y in zip(x_vals, values))
-        sum_x2 = sum(x*x for x in x_vals)
+        sum_x = sum(x_vals)
+        sum_y = sum(values)
+        sum_xy = sum(x * y for x, y in zip(x_vals, values))
+        sum_x2 = sum(x * x for x in x_vals)
 
-        denom = n*sum_x2 - sum_x*sum_x
+        denom = n * sum_x2 - sum_x * sum_x
         if abs(denom) < 1e-12:
             return 0.0
-        slope = (n*sum_xy - sum_x*sum_y) / denom
-        return slope
+        slope_val = (n * sum_xy - sum_x * sum_y) / denom
+        return slope_val
 
     # ----------------------------------------------------------------
-    # 5) Sélection (tournoi)
+    # Selection (tournament)
+    # ----------------------------------------------------------------
     def tournament_selection(pop, fits, k=3):
+        """
+        Randomly picks k individuals from 'pop', returns the best one based on 'fits'.
+        """
         chosen_indices = random.sample(range(len(pop)), k)
         best_ind = None
         best_fit = -1e9
@@ -213,8 +260,12 @@ def ga_multi_criteria_optimization(
         return best_ind
 
     # ----------------------------------------------------------------
-    # 6) Croisement (crossover) uniforme
+    # Crossover
+    # ----------------------------------------------------------------
     def crossover(p1, p2):
+        """
+        Uniform crossover: each parameter is taken from p1 or p2 with 50% chance.
+        """
         child = {}
         for name in param_names:
             if random.random() < 0.5:
@@ -224,41 +275,46 @@ def ga_multi_criteria_optimization(
         return child
 
     # ----------------------------------------------------------------
-    # 7) Mutation
+    # Mutation
+    # ----------------------------------------------------------------
     def mutate(ind):
+        """
+        Mutates each parameter with 'mutation_rate', picking a random value in bounds.
+        """
         for name in param_names:
             if random.random() < mutation_rate:
                 low, high = param_bounds[name]
-                # On peut aussi faire un petit offset au lieu d’un random complet
+                # If low > high in param_bounds, swap to ensure random.uniform is valid
+                if low > high:
+                    low, high = high, low
                 ind[name] = random.uniform(low, high)
 
     # ----------------------------------------------------------------
-    # 8) Boucle Génétique
+    # GA main loop
+    # ----------------------------------------------------------------
     best_solution = None
     best_fitness = -1.0
 
     for gen in range(generations):
-        # Évalue chaque individu
         fitnesses = [evaluate(ind) for ind in population]
 
-        # Mise à jour du meilleur
+        # Track the best
         for i, fit in enumerate(fitnesses):
             if fit > best_fitness:
                 best_fitness = fit
                 best_solution = copy.deepcopy(population[i])
 
-        print(f"Génération {gen+1}/{generations} | Best Fitness = {best_fitness:.3f}")
+        print(f"Generation {gen + 1}/{generations} | Best Fitness = {best_fitness:.3f}")
 
-        # Tri pour élitisme
+        # Sort population by fitness (descending)
         sorted_idx = sorted(range(len(population)), key=lambda i: fitnesses[i], reverse=True)
 
-        # Nouvelle population
+        # Elitism
         new_pop = []
-        # Élitisme
         for i in range(elite_size):
             new_pop.append(copy.deepcopy(population[sorted_idx[i]]))
 
-        # Croisement + mutation
+        # Fill the rest of the population by tournament selection and crossover
         while len(new_pop) < population_size:
             parent1 = tournament_selection(population, fitnesses, k=3)
             parent2 = tournament_selection(population, fitnesses, k=3)
@@ -271,30 +327,30 @@ def ga_multi_criteria_optimization(
             mutate(child)
             new_pop.append(child)
 
-        # Remplace la population
         population = new_pop
 
-    # ----------------------------------------------------------------
-    # Résultat final
+    # Final report
     print("==============================================")
-    print("Meilleure solution trouvée :")
+    print("Best solution found:")
     for p in best_solution:
         print(f"{p} = {best_solution[p]:.6f}")
-    print(f"Score max = {best_fitness:.3f}")
+    print(f"Max score = {best_fitness:.3f}")
     print("==============================================")
 
     return best_solution, best_fitness
 
+
 if __name__ == "__main__":
+    # Example usage: runs the GA and then plots a simulation with the best config
     best_config, best_score = ga_multi_criteria_optimization(
-        species_name = "ble",
+        species_name="ble",
         population_size=20,
         generations=20,
         crossover_rate=0.7,
         mutation_rate=0.1,
         elite_size=2,
         B_max=4.0,
-        B_min=2.0,   
+        B_min=2.0,
         BT_min=2.0,
         BT_max=4.0,
         BL_min=0.0,
@@ -304,4 +360,4 @@ if __name__ == "__main__":
         alpha_sugar=1.0,
         alpha_stability=0.0
     )
-    Rp.simulate_and_plot("ble")  
+    Rp.simulate_and_plot("ble")
