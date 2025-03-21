@@ -866,7 +866,7 @@ def manage_phenology(Plant, Env, day_index, daily_min_temps):
         return
 
     # Switch to reproduction if sugar slope is negative
-    if sugar_slope < 0.0 and Plant["phenology_stage"] != "reproduction":
+    if sugar_slope < -1e-9 and Plant["phenology_stage"] != "reproduction":
         if Plant["growth_type"] == "biannual" and day_index > 365:
             Plant["phenology_stage"] = "reproduction"
         elif Plant["growth_type"] == "annual":
@@ -884,7 +884,7 @@ def manage_phenology(Plant, Env, day_index, daily_min_temps):
             Plant["phenology_stage"] = "dessication"
             Plant["ratio_allocation"]["repro"] = 0.0
             check_allocation(Plant)
-        elif (sugar_slope < 0.0 and Plant["growth_type"] == "perennial"
+        elif (sugar_slope < -1e-9 and Plant["growth_type"] == "perennial"
               and Plant["phenology_stage"] != "dessication"):
             Plant["phenology_stage"] = "dessication"
             Plant["ratio_allocation"]["repro"] = 0.0

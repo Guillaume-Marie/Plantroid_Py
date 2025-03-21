@@ -42,7 +42,7 @@ def run_simulation_collect_data(max_cycles):
     """
     # Choisissez une date de début pour la simulation
     start_date = datetime(2025, 1, 1)  # Exemple: 1er janvier 2025
-    
+
     # Local time counter (in hours)
     sim_time = 0
 
@@ -77,6 +77,7 @@ def run_simulation_collect_data(max_cycles):
         # If we moved to a new day, reset the daily minimum temperature
         if day_index != previous_day_index:
             day_min_temp = float('inf')
+            #print(day_index)
 
         current_temp = Ev.Environment["atmos"]["temperature"]
         if current_temp < day_min_temp:
@@ -100,6 +101,10 @@ def run_simulation_collect_data(max_cycles):
             if len(last_24_stomatal) == 24:
                 if np.mean(last_24_stomatal) < 0.9:
                     Fu.adapt_water_supply(Pl.Plant, Ev.Environment)
+            nutrient_slope = Fu.slope_last_hours(Hi.history["reserve_nutrient"], nb_hours=24 * 3)
+            #print(nutrient_slope)
+            if nutrient_slope < -1e-9:
+                Fu.adapt_nutrient_supply(Pl.Plant)
 
             # Reset stomatal conductance and leaf angle each day
             Pl.Plant["stomatal_conductance"] = 1.0

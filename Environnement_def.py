@@ -14,7 +14,7 @@ import math
 Environment = {
     "soil": {
         "water": 0.0,
-        "nutrient": 3600.0
+        "nutrient": 600.0
     },
     "litter": {
         "necromass": 0.0,

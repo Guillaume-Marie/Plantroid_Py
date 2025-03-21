@@ -395,7 +395,8 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
 
     day_fig.autofmt_xdate(rotation=45)
     day_fig.tight_layout()
-
+    plt.show()
+    
     ########################################################################
     #                      PART B : NIGHT FIGURE (7×3)                      #
     ########################################################################
@@ -624,7 +625,7 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
     night_fig.tight_layout()
 
     # Display both figures
-    plt.show()
+    #plt.show()
 
 
 if __name__ == "__main__":

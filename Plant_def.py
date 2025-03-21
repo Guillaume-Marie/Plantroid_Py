@@ -459,7 +459,7 @@ species_db = {
                 "support": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0}
             },
             "reproduction": {
-                "unique": {"sugar": 0.5, "water": 0.25, "nutrient": 0.0}
+                "unique": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0}
             },
             "maintenance": {
                 "unique": {"sugar": 0.0000005, "water": 0.0, "nutrient": 0.0}
