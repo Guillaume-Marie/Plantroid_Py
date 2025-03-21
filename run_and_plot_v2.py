@@ -146,27 +146,22 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
     # ------------------------------------------------------------------
     # Row 0
     # ------------------------------------------------------------------
-    # (0,0) Biomasse vivante vs nécromasse vs max
+    # (0,0) atmos_light
     ax = day_axes[0, 0]
-    ax.plot(day_date_list, day_data["biomass_total"], label="Biomasse", color="green")
-    ax.plot(day_date_list, day_data["biomass_necromass"], label="Nécromasse", color="brown")
-    if "max_biomass" in day_data:
-        ax.plot(day_date_list, day_data["max_biomass"], label="Théorique", color="black", linestyle="dotted")
+    ax.plot(day_date_list, day_data["atmos_light"], label="Lumière", color="yellow")
     ax.set_xlabel("Date")
-    ax.set_ylabel("Biomasse (g)")
-    ax.set_title("Évolution : vivante vs nécromasse")
+    ax.set_ylabel("Luminosité (W/m²)")
+    ax.set_title("Luminosité atmosphérique")
     ax.legend()
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
 
-    # (0,1) Compartiments vivants
+    # (0,1) Température atmos vs feuille
     ax = day_axes[0, 1]
-    ax.plot(day_date_list, day_data["biomass_support"], label="Support", color="brown")
-    ax.plot(day_date_list, day_data["biomass_photo"], label="Photo", color="green")
-    ax.plot(day_date_list, day_data["biomass_absorp"], label="Absorp", color="blue")
-    ax.plot(day_date_list, day_data["biomass_repro"], label="Repro", color="violet")
+    ax.plot(day_date_list, day_data["atmos_temperature"], label="Tair")
+    ax.plot(day_date_list, day_data["leaf_temperature_after"], label="Tfeuille")
     ax.set_xlabel("Date")
-    ax.set_ylabel("Biomasse (g)")
-    ax.set_title("Compartiments vivants")
+    ax.set_ylabel("Température (°C)")
+    ax.set_title("Température foliaire")
     ax.legend()
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
 
@@ -178,19 +173,68 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
     ax.set_title("Réserve d'eau sol")
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
 
-    # (0,3) Santé
+    # (0,0) Biomasse vivante vs nécromasse vs max
     ax = day_axes[0, 3]
-    ax.plot(day_date_list, day_data["health_state"])
+    ax.plot(day_date_list, day_data["biomass_total"], label="Biomasse", color="green")
+    ax.plot(day_date_list, day_data["biomass_necromass"], label="Nécromasse", color="brown")
+    if "max_biomass" in day_data:
+        ax.plot(day_date_list, day_data["max_biomass"], label="Théorique", color="black", linestyle="dotted")
     ax.set_xlabel("Date")
-    ax.set_ylabel("Santé (0..100)")
-    ax.set_title("État de santé")
+    ax.set_ylabel("Biomasse (g)")
+    ax.set_title("Évolution : vivante vs nécromasse")
+    ax.legend()
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
-
     # ------------------------------------------------------------------
     # Row 1
     # ------------------------------------------------------------------
-    # (1,0) actual_sugar
+    # (1,0) raw_sugar_flux, pot_sugar
     ax = day_axes[1, 0]
+    ax.plot(day_date_list, day_data["raw_sugar_flux"], label="Flux brut")
+    ax.plot(day_date_list, day_data["pot_sugar"], label="Flux potentiel")
+    ax.set_xlabel("Date")
+    ax.set_ylabel("Flux photosynthèse")
+    ax.set_title("Détails Photosynthèse")
+    ax.legend()
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
+
+    # (1,1) Stomates / angle / nutrient_index
+    ax = day_axes[1, 1]
+    ax.plot(day_date_list, day_data["stomatal_conductance"], label="gs")
+    ax.plot(day_date_list, day_data["leaf_angle"], label="angle")
+    ax.set_xlabel("Date")
+    ax.set_ylabel("Index (0..1)")
+    ax.set_title("Régulation stomates / angle / nutriment")
+    ax.legend()
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
+
+    # (2,2) max_transpiration_capacity
+    ax = day_axes[1, 2]
+    ax.plot(day_date_list, day_data["max_transpiration_capacity"], label="Max capacity", color="black", linestyle="dotted")    
+    ax.plot(day_date_list, day_data["cost_transpiration_water"], label="Eau (Transp.)", color="blue")
+    ax.set_xlabel("Date")
+    ax.set_ylabel("H2O (g/heure)")
+    ax.set_title("Détails Transpiration")
+    ax.legend()
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
+
+    # (1,3) Compartiments vivants
+    ax = day_axes[1, 3]
+    ax.plot(day_date_list, day_data["biomass_support"], label="Support", color="brown")
+    ax.plot(day_date_list, day_data["biomass_photo"], label="Photo", color="green")
+    ax.plot(day_date_list, day_data["biomass_absorp"], label="Absorp", color="blue")
+    ax.plot(day_date_list, day_data["biomass_repro"], label="Repro", color="violet")
+    ax.set_xlabel("Date")
+    ax.set_ylabel("Biomasse (g)")
+    ax.set_title("Compartiments vivants")
+    ax.legend()
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
+
+
+    # ------------------------------------------------------------------
+    # Row 2
+    # ------------------------------------------------------------------
+        # (1,0) actual_sugar
+    ax = day_axes[2, 0]
     ax.plot(day_date_list, day_data["actual_sugar"], label="Sucre dispo", color="orange")
     ax.set_xlabel("Date")
     ax.set_ylabel("g sucre / heure")
@@ -198,51 +242,10 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
     ax.legend()
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
 
-    # (1,1) Réserves : sugar, water
-    ax = day_axes[1, 1]
-    ax.plot(day_date_list, day_data["reserve_sugar"], label="Sucre", color="orange")
-    ax.plot(day_date_list, day_data["reserve_water"], label="Eau", color="blue")
-    ax.set_xlabel("Date")
-    ax.set_ylabel("Réserves (g)")
-    ax.set_title("Réserves internes")
-    ax.legend()
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
 
-    # (1,2) Réserves : nutriment
-    ax = day_axes[1, 2]
-    ax.plot(day_date_list, day_data["reserve_nutrient"], label="Nutriments", color="green")
-    ax.set_xlabel("Date")
-    ax.set_ylabel("Réserves (g)")
-    ax.set_title("Réserves internes")
-    ax.legend()
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
-
-    # (1,3) Température atmos vs feuille
-    ax = day_axes[1, 3]
-    ax.plot(day_date_list, day_data["atmos_temperature"], label="Tair")
-    ax.plot(day_date_list, day_data["leaf_temperature_after"], label="Tfeuille")
-    ax.set_xlabel("Date")
-    ax.set_ylabel("Température (°C)")
-    ax.set_title("Température foliaire")
-    ax.legend()
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
-
-    # ------------------------------------------------------------------
-    # Row 2
-    # ------------------------------------------------------------------
-    # (2,0) Stomates / angle / nutrient_index
-    ax = day_axes[2, 0]
-    ax.plot(day_date_list, day_data["stomatal_conductance"], label="gs")
-    ax.plot(day_date_list, day_data["leaf_angle"], label="angle")
-    ax.plot(day_date_list, day_data["nutrient_index"], label="nutrient_index")
-    ax.set_xlabel("Date")
-    ax.set_ylabel("Index (0..1)")
-    ax.set_title("Régulation stomates / angle / nutriment")
-    ax.legend()
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
 
     # (2,1) reserve_used
-    ax = day_axes[2, 1]
+    ax = day_axes[3, 1]
     ax.plot(day_date_list, day_data["reserve_used_maintenance"], label="Maint.", color="orange")
     ax.plot(day_date_list, day_data["reserve_used_extension"], label="Ext.", color="green")
     ax.plot(day_date_list, day_data["reserve_used_reproduction"], label="Repr.", color="violet")
@@ -252,51 +255,18 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
     ax.legend()
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
 
-    # (2,2) max_transpiration_capacity
-    ax = day_axes[2, 2]
-    ax.plot(day_date_list, day_data["max_transpiration_capacity"], label="Max capacity", color="blue")
-    ax.set_xlabel("Date")
-    ax.set_ylabel("H2O (g/heure)")
-    ax.set_title("Détails Transpiration")
-    ax.legend()
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
 
-    # (2,3) raw_sugar_flux, pot_sugar
-    ax = day_axes[2, 3]
-    ax.plot(day_date_list, day_data["raw_sugar_flux"], label="Flux brut")
-    ax.plot(day_date_list, day_data["pot_sugar"], label="Flux potentiel")
+    # (1,1) Stomates / angle / nutrient_index
+    ax = day_axes[2, 1]
+    ax.plot(day_date_list, day_data["nutrient_index"], label="nutrient_index", color="green")
     ax.set_xlabel("Date")
-    ax.set_ylabel("Flux photosynthèse")
-    ax.set_title("Détails Photosynthèse")
-    ax.legend()
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
-
-    # ------------------------------------------------------------------
-    # Row 3
-    # ------------------------------------------------------------------
-    # (3,0) atmos_light
-    ax = day_axes[3, 0]
-    ax.plot(day_date_list, day_data["atmos_light"], label="Lumière", color="yellow")
-    ax.set_xlabel("Date")
-    ax.set_ylabel("Luminosité (W/m²)")
-    ax.set_title("Luminosité atmosphérique")
-    ax.legend()
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
-
-    # (3,1) adjusted_used
-    ax = day_axes[3, 1]
-    ax.plot(day_date_list, day_data["adjusted_used_maintenance"], label="Maint.", color="orange")
-    ax.plot(day_date_list, day_data["adjusted_used_extension"], label="Ext.", color="green")
-    ax.plot(day_date_list, day_data["adjusted_used_reproduction"], label="Repr.", color="violet")
-    ax.plot(day_date_list, day_data["adjusted_used_transpiration"], label="Transp.", color="blue")
-    ax.set_xlabel("Date")
-    ax.set_ylabel("0 ou 1")
-    ax.set_title("adjusted_used (bool)")
+    ax.set_ylabel("Index (0..1)")
+    ax.set_title("Régulation stomates / angle / nutriment")
     ax.legend()
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
 
     # (3,2) ratios d'allocation
-    ax = day_axes[3, 2]
+    ax = day_axes[2, 3]
     ax.plot(day_date_list, day_data["ratio_support"], label="support", color="brown")
     ax.plot(day_date_list, day_data["ratio_photo"], label="photo", color="green")
     ax.plot(day_date_list, day_data["ratio_absorp"], label="absorp", color="blue")
@@ -307,7 +277,60 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
     ax.legend()
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
 
-    # (3,3) success_extension, success_reproduction
+    # (1,2) Réserves : nutriment
+    ax = day_axes[2, 2]
+    ax.plot(day_date_list, day_data["reserve_nutrient"], label="Nutriments", color="green")
+    ax.set_xlabel("Date")
+    ax.set_ylabel("Réserves (g)")
+    ax.set_title("Réserves internes")
+    ax.legend()
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
+
+
+
+
+    # ------------------------------------------------------------------
+    # Row 3
+    # ------------------------------------------------------------------
+
+    # (1,1) Réserves : sugar, water
+    ax = day_axes[3, 0]
+    ax.plot(day_date_list, day_data["reserve_sugar"], label="Sucre", color="orange")
+    ax.set_xlabel("Date")
+    ax.set_ylabel("Réserves (g)")
+    ax.set_title("Réserves internes")
+    ax.legend()
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
+
+    # (3,1) adjusted_used
+    ax = day_axes[4, 1]
+    ax.plot(day_date_list, day_data["adjusted_used_maintenance"], label="Maint.", color="orange")
+    ax.plot(day_date_list, day_data["adjusted_used_extension"], label="Ext.", color="green")
+    ax.plot(day_date_list, day_data["adjusted_used_reproduction"], label="Repr.", color="violet")
+    ax.plot(day_date_list, day_data["adjusted_used_transpiration"], label="Transp.", color="blue")
+    ax.set_xlabel("Date")
+    ax.set_ylabel("0 ou 1")
+    ax.set_title("adjusted_used (bool)")
+    ax.legend()
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
+
+
+    # (1,1) Réserves : sugar, water
+    ax = day_axes[3, 2]
+    ax.plot(day_date_list, day_data["reserve_water"], label="Eau", color="blue")
+    ax.set_xlabel("Date")
+    ax.set_ylabel("Réserves (g)")
+    ax.set_title("Réserves internes")
+    ax.legend()
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
+
+
+
+
+    # ------------------------------------------------------------------
+    # Row 4
+    # ------------------------------------------------------------------
+    # (4,3) success_extension, success_reproduction
     ax = day_axes[3, 3]
     ax.plot(day_date_list, day_data["success_extension"], label="Extension", color="green")
     ax.plot(day_date_list, day_data["success_reproduction"], label="Reproduction", color="violet")
@@ -317,20 +340,8 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
     ax.legend()
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
 
-    # ------------------------------------------------------------------
-    # Row 4
-    # ------------------------------------------------------------------
-    # (4,0) cost_transpiration_water
-    ax = day_axes[4, 0]
-    ax.plot(day_date_list, day_data["cost_transpiration_water"], label="Eau (Transp.)", color="blue")
-    ax.set_xlabel("Date")
-    ax.set_ylabel("Coût (g)")
-    ax.set_title("Processus transpiration")
-    ax.legend()
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
-
     # (4,1) cost_maintenance_sugar
-    ax = day_axes[4, 1]
+    ax = day_axes[4, 0]
     ax.plot(day_date_list, day_data["cost_maintenance_sugar"], label="Maintenance (Sucre)", color="orange")
     ax.set_xlabel("Date")
     ax.set_ylabel("Coût (g)")
@@ -343,21 +354,21 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
     ax.plot(day_date_list, day_data["cost_extension_sugar"], label="Ext. (Sucre)", color="orange")
     ax.plot(day_date_list, day_data["cost_extension_water"], label="Ext. (Eau)", color="blue")
     ax.plot(day_date_list, day_data["cost_extension_nutrient"], label="Ext. (Nutr.)", color="green")
+    ax.plot(day_date_list, day_data["cost_reproduction_sugar"], label="Repro (Sucre)", color="orange", linestyle="dotted")
+    ax.plot(day_date_list, day_data["cost_reproduction_water"], label="Repro (Eau)", color="blue", linestyle="dotted")
+    ax.plot(day_date_list, day_data["cost_reproduction_nutrient"], label="Repro (Nutr.)", color="green", linestyle="dotted")
     ax.set_xlabel("Date")
     ax.set_ylabel("Coût (g)")
     ax.set_title("Processus extension")
     ax.legend()
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
 
-    # (4,3) cost_reproduction_sugar/water/nutrient
+    # (0,3) Santé
     ax = day_axes[4, 3]
-    ax.plot(day_date_list, day_data["cost_reproduction_sugar"], label="Repro (Sucre)", color="orange")
-    ax.plot(day_date_list, day_data["cost_reproduction_water"], label="Repro (Eau)", color="blue")
-    ax.plot(day_date_list, day_data["cost_reproduction_nutrient"], label="Repro (Nutr.)", color="green")
+    ax.plot(day_date_list, day_data["health_state"])
     ax.set_xlabel("Date")
-    ax.set_ylabel("Coût (g)")
-    ax.set_title("Processus reproduction")
-    ax.legend()
+    ax.set_ylabel("Santé (0..100)")
+    ax.set_title("État de santé")
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
 
     # Lignes verticales : changements de stade phénologique (jour)
