@@ -280,7 +280,6 @@ def adjust_leaf_params_angle(
             #  - cost_water = Plant["cost"]["transpiration"]["water"] + (cooling if you have it)
             #  - capacity   = Plant["max_transpiration_capacity"]
             #  - T_leaf     = T_leaf_C
-            #  - T_opt      = Plant["T_optim"]
 
             photosynth = Plant["flux_in"]["sugar"]
             cost_water = Plant["cost"]["transpiration"]["water"] 

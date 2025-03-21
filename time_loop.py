@@ -15,6 +15,8 @@ import global_constants as Gl
 import history_def as Hi
 import functions_BE as Be
 import numpy as np
+from datetime import datetime, timedelta
+
 
 
 def run_simulation_collect_data(max_cycles):
@@ -38,7 +40,9 @@ def run_simulation_collect_data(max_cycles):
           - Plant   : the final plant state at the end of simulation
           - Environment : the final state of environment
     """
-
+    # Choisissez une date de début pour la simulation
+    start_date = datetime(2025, 1, 1)  # Exemple: 1er janvier 2025
+    
     # Local time counter (in hours)
     sim_time = 0
 

@@ -70,7 +70,8 @@ history = {
     "ratio_repro": [],
     # Stress
     "stress_sugar": [],
-    "stress_water": [],
+    "stress_water": [],   
+    "phenology_stage":  [],
     # Maximum theoretical biomass
     "max_biomass": []
 }
@@ -96,6 +97,7 @@ def history_update(Plant, history, Environment, time):
 
     # Biomasses
     history["biomass_total"].append(Plant["biomass_total"])
+    history["phenology_stage"].append(Plant["phenology_stage"])
     history["biomass_support"].append(Plant["biomass"]["support"])
     history["biomass_photo"].append(Plant["biomass"]["photo"])
     history["biomass_absorp"].append(Plant["biomass"]["absorp"])
