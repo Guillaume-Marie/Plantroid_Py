@@ -57,6 +57,7 @@ def set_plant_species(Plant, species_name, species_db):
     Plant["cannibal_ratio"] = params["cannibal_ratio"]
     Plant["max_turgor_loss_frac"] = params["max_turgor_loss_frac"]    
     Plant["cost_params"] = params["cost_params"]
+    Plant["reserve_ratio_ps"] = params["reserve_ratio_ps"]    
     Plant["reserve"] = params["reserve"]
     Plant["size"] = params["size"]
     Plant["biomass_total"] = params["biomass_total"]
@@ -95,6 +96,7 @@ Plant = {
     # Additional tracking of water needs and transpiration constraints
     "total_water_needed": 0.0,
     "transp_limit_pool": "none",
+    "reserve_ratio": "none",
 
     # Health / alive status
     "health_state": 100.0,
@@ -106,12 +108,6 @@ Plant = {
         "maintenance": False,
         "extension": False,
         "reproduction": False
-    },
-    "adjusted_used": {
-        "maintenance": False,
-        "extension": False,
-        "reproduction": False,
-        "transpiration": False
     },
 
     # Stress and success histories
@@ -167,14 +163,16 @@ species_db = {
         "support_turnover": Gl.delta_adapt / 20,
         "cannibal_ratio": 0.3,
         "max_turgor_loss_frac": 0.10,
+        "reserve_ratio_ps": {"vegetative": 0.01/12, 
+                          "making_reserve": 0.0, 
+                          "reproduction": 0.05/12
+                        },
         "cost_params": {
             "extension": {
                 "photo": {"sugar": 0.5, "water": 0.75, "nutrient": 0.02},
                 "absorp": {"sugar": 0.5, "water": 0.75, "nutrient": 0.02},
-                "support": {"sugar": 0.5, "water": 0.75, "nutrient": 0.01}
-            },
-            "reproduction": {
-                "unique": {"sugar": 0.5, "water": 0.75, "nutrient": 0.03}
+                "support": {"sugar": 0.5, "water": 0.75, "nutrient": 0.01},
+                "repro": {"sugar": 0.5, "water": 0.75, "nutrient": 0.03}
             },
             "maintenance": {
                 "unique": {"sugar": 5e-7, "water": 0.0, "nutrient": 0.0}
@@ -213,10 +211,8 @@ species_db = {
             "extension": {
                 "photo": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
                 "absorp": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
-                "support": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0}
-            },
-            "reproduction": {
-                "unique": {"sugar": 0.5, "water": 0.25, "nutrient": 0.0}
+                "support": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
+                "repro": {"sugar": 0.5, "water": 0.75, "nutrient": 0.03}
             },
             "maintenance": {
                 "unique": {"sugar": 5.0e-7, "water": 0.0, "nutrient": 0.0}
@@ -255,10 +251,8 @@ species_db = {
             "extension": {
                 "photo": {"sugar": 0.5, "water": 0.75, "nutrient": 0.02},
                 "absorp": {"sugar": 0.5, "water": 0.75, "nutrient": 0.02},
-                "support": {"sugar": 0.5, "water": 0.75, "nutrient": 0.01}
-            },
-            "reproduction": {
-                "unique": {"sugar": 0.5, "water": 0.75, "nutrient": 0.02}
+                "support": {"sugar": 0.5, "water": 0.75, "nutrient": 0.01},
+                "repro": {"sugar": 0.5, "water": 0.75, "nutrient": 0.03}
             },
             "maintenance": {
                 "unique": {"sugar": 0.0000005, "water": 0.0, "nutrient": 0.0}
@@ -296,10 +290,8 @@ species_db = {
             "extension": {
                 "photo": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
                 "absorp": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
-                "support": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0}
-            },
-            "reproduction": {
-                "unique": {"sugar": 0.5, "water": 0.25, "nutrient": 0.0}
+                "support": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
+                "repro": {"sugar": 0.5, "water": 0.75, "nutrient": 0.03}
             },
             "maintenance": {
                 "unique": {"sugar": 0.0000005, "water": 0.0, "nutrient": 0.0}
@@ -337,10 +329,8 @@ species_db = {
             "extension": {
                 "photo": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
                 "absorp": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
-                "support": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0}
-            },
-            "reproduction": {
-                "unique": {"sugar": 0.5, "water": 0.25, "nutrient": 0.0}
+                "support": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
+                "repro": {"sugar": 0.5, "water": 0.75, "nutrient": 0.03}
             },
             "maintenance": {
                 "unique": {"sugar": 0.0000005, "water": 0.0, "nutrient": 0.0}
@@ -378,10 +368,8 @@ species_db = {
             "extension": {
                 "photo": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
                 "absorp": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
-                "support": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0}
-            },
-            "reproduction": {
-                "unique": {"sugar": 0.5, "water": 0.25, "nutrient": 0.0}
+                "support": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
+                "repro": {"sugar": 0.5, "water": 0.75, "nutrient": 0.03}
             },
             "maintenance": {
                 "unique": {"sugar": 0.0000005, "water": 0.0, "nutrient": 0.0}
@@ -419,10 +407,8 @@ species_db = {
             "extension": {
                 "photo": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
                 "absorp": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
-                "support": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0}
-            },
-            "reproduction": {
-                "unique": {"sugar": 0.5, "water": 0.25, "nutrient": 0.0}
+                "support": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
+                "repro": {"sugar": 0.5, "water": 0.75, "nutrient": 0.03}
             },
             "maintenance": {
                 "unique": {"sugar": 0.0000005, "water": 0.0, "nutrient": 0.0}
@@ -460,10 +446,8 @@ species_db = {
             "extension": {
                 "photo": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
                 "absorp": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
-                "support": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0}
-            },
-            "reproduction": {
-                "unique": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0}
+                "support": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
+                "repro": {"sugar": 0.5, "water": 0.75, "nutrient": 0.03}
             },
             "maintenance": {
                 "unique": {"sugar": 0.0000005, "water": 0.0, "nutrient": 0.0}

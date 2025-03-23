@@ -1,7 +1,9 @@
 # functions.py
 """
-General physiological, growth, and resource-management functions for the Plantroid model.
-Comments and docstrings are in English, while function/variable names remain in French
+General physiological, growth, and resource-management functions 
+for the Plantroid model.
+Comments and docstrings are in English, while function/variable 
+names remain in French
 to preserve compatibility with other modules.
 """
 
@@ -42,19 +44,19 @@ def check_for_negatives(Plant, Env, time):
         if val < -1e-12:
             print("====================================================")
             print(f"ERROR: Negative biomass detected at t={time} h!")
-            print(f"Compartment '{compartment}' = {val:.5f}")
+            print(f"Compartment '{compartment}' = {val:.8f}")
             print("Diagnostic info:")
-            print(f"  - biomasse totale: {Plant['biomass_total']:.5f}")
-            print(f"  - photo: {Plant['biomass']['photo']:.5f}")
-            print(f"  - absorp: {Plant['biomass']['absorp']:.5f}")
-            print(f"  - support: {Plant['biomass']['support']:.5f}")
-            print(f"  - repro: {Plant['biomass']['repro']:.5f}")
-            print(f"  - flux_in sugar: {Plant['flux_in']['sugar']:.5f}")
-            print(f"  - flux_in water: {Plant['flux_in']['water']:.5f}")
-            print(f"  - flux_in nutrient: {Plant['flux_in']['nutrient']:.5f}")
-            print(f"  - reserve sugar: {Plant['reserve']['sugar']:.5f}")
-            print(f"  - reserve water: {Plant['reserve']['water']:.5f}")
-            print(f"  - reserve nutrient: {Plant['reserve']['nutrient']:.5f}")
+            print(f"  - biomasse totale: {Plant['biomass_total']:.8f}")
+            print(f"  - photo: {Plant['biomass']['photo']:.8f}")
+            print(f"  - absorp: {Plant['biomass']['absorp']:.8f}")
+            print(f"  - support: {Plant['biomass']['support']:.8f}")
+            print(f"  - repro: {Plant['biomass']['repro']:.8f}")
+            print(f"  - flux_in sugar: {Plant['flux_in']['sugar']:.8f}")
+            print(f"  - flux_in water: {Plant['flux_in']['water']:.8f}")
+            print(f"  - flux_in nutrient: {Plant['flux_in']['nutrient']:.8f}")
+            print(f"  - reserve sugar: {Plant['reserve']['sugar']:.8f}")
+            print(f"  - reserve water: {Plant['reserve']['water']:.8f}")
+            print(f"  - reserve nutrient: {Plant['reserve']['nutrient']:.8f}")
             print(f"  - phenology_stage: {Plant['phenology_stage']}")
             print(f"  - health_state: {Plant['health_state']}")
             print("====================================================")
@@ -66,19 +68,19 @@ def check_for_negatives(Plant, Env, time):
         if val < -1e-12:
             print("====================================================")
             print(f"ERROR: Negative flux detected at t={time} h!")
-            print(f"Flux '{flux_name}' = {val:.5f}")
+            print(f"Flux '{flux_name}' = {val:.8f}")
             print("Diagnostic info:")
-            print(f"  - biomass total: {Plant['biomass_total']:.5f}")
-            print(f"  - photo: {Plant['biomass']['photo']:.5f}")
-            print(f"  - absorp: {Plant['biomass']['absorp']:.5f}")
-            print(f"  - support: {Plant['biomass']['support']:.5f}")
-            print(f"  - repro: {Plant['biomass']['repro']:.5f}")
-            print(f"  - flux_in sugar: {Plant['flux_in']['sugar']:.5f}")
-            print(f"  - flux_in water: {Plant['flux_in']['water']:.5f}")
-            print(f"  - flux_in nutrient: {Plant['flux_in']['nutrient']:.5f}")
-            print(f"  - reserve sugar: {Plant['reserve']['sugar']:.5f}")
-            print(f"  - reserve water: {Plant['reserve']['water']:.5f}")
-            print(f"  - reserve nutrient: {Plant['reserve']['nutrient']:.5f}")
+            print(f"  - biomass total: {Plant['biomass_total']:.8f}")
+            print(f"  - photo: {Plant['biomass']['photo']:.8f}")
+            print(f"  - absorp: {Plant['biomass']['absorp']:.8f}")
+            print(f"  - support: {Plant['biomass']['support']:.8f}")
+            print(f"  - repro: {Plant['biomass']['repro']:.8f}")
+            print(f"  - flux_in sugar: {Plant['flux_in']['sugar']:.8f}")
+            print(f"  - flux_in water: {Plant['flux_in']['water']:.8f}")
+            print(f"  - flux_in nutrient: {Plant['flux_in']['nutrient']:.8f}")
+            print(f"  - reserve sugar: {Plant['reserve']['sugar']:.8f}")
+            print(f"  - reserve water: {Plant['reserve']['water']:.8f}")
+            print(f"  - reserve nutrient: {Plant['reserve']['nutrient']:.8f}")
             print(f"  - phenology_stage: {Plant['phenology_stage']}")
             print(f"  - health_state: {Plant['health_state']}")
             print("====================================================")
@@ -90,7 +92,8 @@ def check_for_negatives(Plant, Env, time):
 
 def degrade_health_state(Plant):
     """
-    Decreases the plant health by 1 unit. If health goes below 0, increments dying_state_count.
+    Decreases the plant health by 1 unit. If health goes below 0, 
+    increments dying_state_count.
     """
     Plant["health_state"] -= 1
     if Plant["health_state"] < 0:
@@ -109,7 +112,8 @@ def restore_health(Plant):
 
 def destroy_biomass(Plant, Env, which_biomass, process, damage_factor=None):
     """
-    Destroys a fraction of the specified biomass compartment and adds it to necromass.
+    Destroys a fraction of the specified biomass compartment and adds it
+     to necromass.
     Optionally recovers some water/nutrients (if a more detailed model is used).
 
     Parameters
@@ -162,7 +166,8 @@ def ensure_maintenance_sugar(Plant, Env):
         return  # enough sugar, no action
 
     # Otherwise, destroy biomass to recover sugar
-    compartments_order = ["photo", "absorp", "support"]  # priority for cannibalization
+    # priority for cannibalization
+    compartments_order = ["photo", "absorp", "support"]  
     mass_to_destroy = shortfall / Plant["cannibal_ratio"]
 
     for comp in compartments_order:
@@ -185,9 +190,12 @@ def ensure_maintenance_sugar(Plant, Env):
     update_biomass_total(Plant)
 
     remaining_shortfall = (
-        Plant["cost"]["maintenance"]["sugar"] - (Plant["flux_in"]["sugar"] + Plant["reserve"]["sugar"])
+        Plant["cost"]["maintenance"]["sugar"] - 
+        (Plant["flux_in"]["sugar"] + 
+         Plant["reserve"]["sugar"])
     )
-    # If there's still not enough sugar even after cannibalization, we could degrade health
+    # If there's still not enough sugar even after cannibalization,
+    #  we could degrade health
     if remaining_shortfall > 0:
         pass
         # degrade_health_state(Plant) # optional approach
@@ -195,7 +203,8 @@ def ensure_maintenance_sugar(Plant, Env):
 
 def refill_reserve(Plant, rsc):
     """
-    Transfers all of flux_in[rsc] into Plant["reserve"][rsc], up to a certain logic limit.
+    Transfers all of flux_in[rsc] into Plant["reserve"][rsc], 
+    up to a certain logic limit.
     """
     if rsc == "water" and Plant["reserve"][rsc] >= Plant["biomass_total"]:
         return
@@ -205,34 +214,13 @@ def refill_reserve(Plant, rsc):
         Plant["flux_in"][rsc] -= usable_in
         Plant["reserve"][rsc] += usable_in
     else:
-        print("Error in refill_reserve: flux_in is negative for", rsc, Plant["flux_in"][rsc])
+        print("Error in refill_reserve: flux_in is negative for", 
+              rsc, Plant["flux_in"][rsc])
 
 
 ###############################################
 #        GROWTH RATE AND PHOTOSYNTHESIS       #
 ###############################################
-
-def calculate_potential_new_biomass(Plant, bm_total):
-    """
-    Uses a monomolecular growth form:
-      new_biomass = bm_total * (r_max / (1 + alpha * bm_total))
-
-    Parameters
-    ----------
-    Plant : dict
-    bm_total : float
-        Current total living biomass of the plant.
-
-    Returns
-    -------
-    float
-        Potential new biomass growth for this timestep.
-    """
-    r_max = Plant["r_max"]
-    alpha = Plant["alpha"]
-    return bm_total * (r_max / (1.0 + alpha * bm_total))
-
-
 def photosynthesis(Plant, Env):
     """
     Computes photosynthesis, updating flux_in["sugar"] based on light absorption,
@@ -246,7 +234,9 @@ def photosynthesis(Plant, Env):
     Env : dict
     """
     cos_theta = max(0.0, math.cos(Plant["leaf_angle"]))
-    absorbed_solar = Env["atmos"]["light"] * cos_theta * (1.0 - Plant["leaf_albedo"])
+    absorbed_solar = (Env["atmos"]["light"] * 
+                      cos_theta * 
+                      (1.0 - Plant["leaf_albedo"]))
 
     # Power absorbed J/s/gLeaf
     power_absorbed = absorbed_solar * Plant["sla_max"] * Plant["slai"]
@@ -265,13 +255,17 @@ def photosynthesis(Plant, Env):
     cf = Env["atmos"]["Co2"] / 400.0
 
     # Stomatal conductance factor
-    c6_flux = c6_flux_pot * cf * Plant["stomatal_conductance"] * Plant["nutrient_index"]
+    c6_flux = (c6_flux_pot * 
+               cf * 
+               Plant["stomatal_conductance"] * 
+               Plant["nutrient_index"])
 
     # Convert flux to total sugar per hour (gC6H12O6 / hour)
     Plant["flux_in"]["sugar"] = c6_flux * Plant["biomass"]["photo"] * Gl.DT
 
     # Water cost of forming sugar
-    Plant["cost"]["transpiration"]["water"] += Plant["flux_in"]["sugar"] * Gl.RATIO_H2O_C6H12O6
+    Plant["cost"]["transpiration"]["water"] += (Plant["flux_in"]["sugar"] * 
+                                                Gl.RATIO_H2O_C6H12O6)
 
     # Diagnostics
     Plant["diag"]["raw_sugar_flux"] = power_absorbed * Plant["watt_to_sugar_coeff"]
@@ -409,7 +403,8 @@ def compute_cell_water_draw(Plant):
       (ex: 0.15 => 15% de la biomasse).
     smoothing_factor : float
       Contrôle la "vitesse" de saturation exponentielle 
-      (plus il est petit, plus la courbe est lente => on pioche peu dès qu'on se rapproche du min).
+      (plus il est petit, plus la courbe est lente => on pioche peu dès
+        qu'on se rapproche du min).
 
     Retour
     ------
@@ -479,7 +474,8 @@ def compute_max_transpiration_capacity(Plant, Env):
 
 def post_process_success(Plant, Env, process):
     """
-    Called when resources are sufficient for a process (maintenance, extension, reproduction).
+    Called when resources are sufficient for a process 
+    (maintenance, extension, reproduction).
     Pays the cost, updates compartments, and can restore health.
     """
     if process == "maintenance":
@@ -488,15 +484,11 @@ def post_process_success(Plant, Env, process):
         allocate_biomass(Plant, Plant["new_biomass"])
         pay_cost(Plant, Env, process)
         restore_health(Plant)
-    elif process == "reproduction":
-        allocate_biomass(Plant,Plant["new_biomass"])
-        pay_cost(Plant, Env, process)
-        restore_health(Plant)
-
 
 def post_process_resist(Plant, Env, process):
     """
-    Called when the plant is partially resisting the resource shortage (after drawing reserves).
+    Called when the plant is partially resisting the 
+    resource shortage (after drawing reserves).
     """
     if process == "maintenance":
         pay_cost(Plant, Env, process)
@@ -504,11 +496,6 @@ def post_process_resist(Plant, Env, process):
         allocate_biomass(Plant, Plant["new_biomass"])
         pay_cost(Plant, Env, process)
         adjust_success_cycle(Plant, "extension")
-        restore_health(Plant)
-    elif process == "reproduction":
-        allocate_biomass(Plant,Plant["new_biomass"])
-        pay_cost(Plant, Env, process)
-        adjust_success_cycle(Plant, "reproduction")
         restore_health(Plant)
 
 
@@ -524,15 +511,8 @@ def post_process_fail(Plant, Env, process):
 
     elif process == "extension":
         adjust_success_cycle(Plant, "extension")
-        if Plant["success_cycle"]["extension"] > 0:
-            pay_cost(Plant, Env, process)
-            allocate_biomass(Plant, Plant["new_biomass"])
+        degrade_health_state(Plant)
 
-    elif process == "reproduction":
-        adjust_success_cycle(Plant, "reproduction")
-        #if Plant["success_cycle"]["reproduction"] > 0:
-        #    pay_cost(Plant, Env, process)
-        #    allocate_biomass(Plant,Plant["new_biomass"])
 
 
 ###############################################
@@ -554,15 +534,39 @@ def handle_process(Plant, Env, process):
     if resources_available(Plant, process):
         update_stress_history(Plant, process)
         post_process_resist(Plant, Env, process)
-        return
-
-    adjust_cost(Plant, Env, process)
-    update_stress_history(Plant, process)
-    if resources_available(Plant, process):
-        post_process_resist(Plant, Env, process)
     else:
+        update_stress_history(Plant, process)
         post_process_fail(Plant, Env, process)
+    return  
 
+def calculate_potential_new_biomass(Plant):
+    """
+    Uses a monomolecular growth form:
+      new_biomass = bm_total * (r_max / (1 + alpha * bm_total))
+    """
+    r_max = Plant["r_max"]
+    alpha = Plant["alpha"]
+    max_growth = Plant["biomass_total"] * (r_max / (1.0 + alpha * Plant["biomass_total"]))
+    limiting_bio = max_growth
+    #print("max :",max_growth)
+    #print("sugar:",Plant["flux_in"]["sugar"])
+    #print("water:",Plant["flux_in"]["water"])
+    #print("nutrient:",Plant["flux_in"]["nutrient"])
+
+    for r in Gl.resource:
+        max_bio = 0.0
+        for bf in Gl.biomass_function:
+            denom = Plant["cost_params"]["extension"][bf][r]
+            r_avail = ((Plant["flux_in"][r] + 
+                       (Plant["reserve_ratio"] * 
+                       Plant["reserve"][r])) *
+                       Plant["ratio_allocation"][bf])
+            max_bio += r_avail / denom 
+        if max_bio < limiting_bio:
+            limiting_bio = max_bio
+    Plant["new_biomass"] = limiting_bio
+
+    return        
 
 def resources_available(Plant, process):
     """
@@ -577,9 +581,10 @@ def resources_available(Plant, process):
 
 def pay_cost(Plant, Env, process):
     """
-    Deducts the process cost from the flux_in, or sugar alone in case of maintenance.
+    Deducts the process cost from the flux_in, or sugar 
+    alone in case of maintenance.
     """
-    if process in ["extension", "reproduction"]:
+    if process == "extension":
         Plant["flux_in"]["sugar"] -= Plant["cost"][process]["sugar"]
         Plant["flux_in"]["nutrient"] -= Plant["cost"][process]["nutrient"]
         Plant["flux_in"]["water"] -= Plant["cost"][process]["water"]
@@ -587,90 +592,55 @@ def pay_cost(Plant, Env, process):
         Plant["flux_in"]["sugar"] -= Plant["cost"][process]["sugar"]
 
 
-def calculate_cost(Plant, Env, process):
+def calculate_cost(Plant, process):
     """
-    Fills Plant["cost"][process] with the estimated resource costs for that process.
+    Fills Plant["cost"][process] with the estimated resource
+      costs for that process.
 
     - Maintenance: proportional to biomass_total and time
     - Extension: depends on new_biomass
     - Reproduction: depends on reproduction_ref
     """
-    if process == "reproduction":
-        for r in Gl.resource:
-            cost_factor = Plant["cost_params"][process]["unique"][r]
-            Plant["cost"][process][r] = cost_factor * Plant["new_biomass"] * Plant["ratio_allocation"]["repro"] 
-
-    elif process == "maintenance":
+    if process == "maintenance":
         cost_factor = Plant["cost_params"][process]["unique"]["sugar"]
-        Plant["cost"][process]["sugar"] = cost_factor * Gl.DT * Plant["biomass_total"]
-
+        Plant["cost"][process]["sugar"] = (cost_factor * 
+                                           Gl.DT * 
+                                           Plant["biomass_total"])
     else:  # extension
-        for bf in Gl.biomass_function:
-            for r in Gl.resource:
-                cost_factor = Plant["cost_params"]["extension"][bf][r]
-                Plant["cost"][process][r] += cost_factor * Plant["new_biomass"] * Plant["ratio_allocation"][bf] 
-
-
-def adjust_cost(Plant, Env, process):
-    """
-    If not enough resources or capacity, we reduce the cost (and new_biomass) accordingly.
-    """
-    Plant["adjusted_used"][process] = True
-
-    if process == "extension":
-        limiting_bio = Plant["new_biomass"]
-        for bf in Gl.biomass_function:
-            for r in Gl.resource:
-                denom = Plant["cost_params"]["extension"][bf][r]
-                if denom > 0:
-                    max_bio = Plant["flux_in"][r] / denom if denom != 0 else 0
-                    if max_bio < limiting_bio:
-                        limiting_bio = max_bio
-
-        Plant["new_biomass"] = limiting_bio
-        # Recompute cost with updated new_biomass
-        for bf in Gl.biomass_function:
-            for r in Gl.resource:
-                cost_factor = Plant["cost_params"]["extension"][bf][r]
-                Plant["cost"][process][r] = cost_factor * Plant["new_biomass"]
-
-    elif process == "reproduction":
-        limiting_bio = float('inf')
+    # Recompute cost with updated new_biomass
         for r in Gl.resource:
-            denom = Plant["cost_params"][process]["unique"][r]
-            if denom > 0:
-                max_bio = Plant["flux_in"][r] / denom
-                if max_bio < limiting_bio:
-                    limiting_bio = max_bio
-
-        if limiting_bio < Plant["new_biomass"]:
-            Plant["new_biomass"] = limiting_bio
-
-        for r in Gl.resource:
-            cost_factor = Plant["cost_params"][process]["unique"][r]
-            Plant["cost"][process][r] = cost_factor * limiting_bio
-
-    elif process == "maintenance":
-        pass  # generally only sugar cost, handled by cannibalization if needed
-
+            for bf in Gl.biomass_function:
+                cost_factor = Plant["cost_params"]["extension"][bf][r]
+                Plant["cost"]["extension"][r] += (cost_factor * 
+                                                Plant["new_biomass"] *
+                                                Plant["ratio_allocation"][bf])
 
 def draw_from_reserves(Plant, process):
     """
     Tries to cover the shortfall of flux_in by drawing from the internal reserves.
     """
-    for r in Gl.resource:
-        shortfall = Plant["cost"][process][r] - Plant["flux_in"][r]
-        if shortfall > 0 and Plant["reserve"][r] > 0:
-            transfer = min(shortfall, Plant["reserve"][r])
-            Plant["reserve"][r] -= transfer
-            Plant["flux_in"][r] += transfer
+    if process == "maintenance":
+        for r in Gl.resource:
+            shortfall = Plant["cost"][process][r] - Plant["flux_in"][r]
+            if shortfall > 0 and Plant["reserve"][r] > 0:
+                transfer = min(shortfall, Plant["reserve"][r])
+                Plant["reserve"][r] -= transfer
+                Plant["flux_in"][r] += transfer
+    else:
+        for r in Gl.resource:
+            shortfall = Plant["cost"][process][r] - Plant["flux_in"][r]
+            if shortfall > 0 and Plant["reserve"][r] > 0:
+                transfer = min(shortfall, Plant["reserve"][r] * Plant["reserve_ratio"])
+                Plant["reserve"][r] -= transfer
+                Plant["flux_in"][r] += transfer        
 
     Plant["reserve_used"][process] = True
 
 
 def compute_stress(Plant, process):
     """
-    Computes a stress measure (0..1) for maintenance (sugar) or transpiration (water).
+    Computes a stress measure (0..1) for maintenance (sugar)
+      or transpiration (water).
 
     Parameters
     ----------
@@ -707,19 +677,13 @@ def update_success_history(Plant, process):
     """
     Appends the current success_cycle[process] to the success_history[process].
     """
-    sc = Plant["success_cycle"].get(process, 0.0)
-    Plant["success_history"][process].append(sc)
-    Plant["success_history"][process] = Gl.keep_last_N(Plant["success_history"][process], Gl.N)
-
+    return
 
 def update_stress_history(Plant, process):
     """
     Appends a stress measure to the appropriate stress_history for sugar or water.
     """
-    if process in ["maintenance", "transpiration"]:
-        cycle_stress, rsc = compute_stress(Plant, process)
-        Plant["stress_history"][rsc].append(cycle_stress)
-        Plant["stress_history"][rsc] = Gl.keep_last_N(Plant["stress_history"][rsc], Gl.N)
+    return
 
 
 ###############################################
@@ -847,7 +811,8 @@ def update_biomass_total(Plant):
 
 def allocate_biomass(Plant, nb):
     """
-    Distributes 'nb' (new biomass) among support, photo, absorp, and repro compartments
+    Distributes 'nb' (new biomass) among support, photo, 
+    absorp, and repro compartments
     according to ratio_allocation.
 
     Parameters
@@ -872,7 +837,8 @@ def allocate_biomass(Plant, nb):
 
 def adjust_success_cycle(Plant, process):
     """
-    success_cycle = new_biomass / (max_biomass) as a rough measure of process success.
+    success_cycle = new_biomass / (max_biomass) as a 
+    rough measure of process success.
 
     Parameters
     ----------
@@ -895,6 +861,7 @@ def phenology_annual(Plant, Env, day_index, daily_min_temps):
     if Plant["phenology_stage"] in ["seed", "dormancy"]:
         if len(daily_min_temps) >= 7 and all(t > 3.0 for t in daily_min_temps[-7:]):
             Plant["phenology_stage"] = "vegetative"
+            update_phenological_parameters(Plant)
         else:
             pass
         return
@@ -904,6 +871,7 @@ def phenology_annual(Plant, Env, day_index, daily_min_temps):
         Plant["phenology_stage"] != "reproduction"):
             Plant["reproduction_ref"] = Plant["biomass_total"]
             Plant["phenology_stage"] = "reproduction"
+            update_phenological_parameters(Plant)
             return
 
 
@@ -918,11 +886,13 @@ def phenology_biannual(Plant, Env, day_index, daily_min_temps):
     if Plant["phenology_stage"] in ["seed"]:
         if len(daily_min_temps) >= 7 and all(t > 3.0 for t in daily_min_temps[-7:]):
             Plant["phenology_stage"] = "vegetative"
+            update_phenological_parameters(Plant)
         return
     
     if Plant["phenology_stage"] in ["dormancy"] and day_index > 365:
         if len(daily_min_temps) >= 7 and all(t > 3.0 for t in daily_min_temps[-7:]):
             Plant["phenology_stage"] = "reproduction"
+            update_phenological_parameters(Plant)
         return
    
     # optimize reserve build-up
@@ -931,6 +901,7 @@ def phenology_biannual(Plant, Env, day_index, daily_min_temps):
         Plant["phenology_stage"] == "vegetative"):
 
         Plant["phenology_stage"] = "making_reserve"
+        update_phenological_parameters(Plant)
         return
     
     if (day_index < 365 and sugar_slope < -1e-9 and
@@ -953,39 +924,26 @@ def phenology_perennial(Plant, Env, day_index, daily_min_temps):
     if Plant["phenology_stage"] in ["seed", "dormancy"]:
         if len(daily_min_temps) >= 7 and all(t > 3.0 for t in daily_min_temps[-7:]):
             Plant["phenology_stage"] = "vegetative"
+            update_phenological_parameters(Plant)
         return
     
     if (Plant["growth_type"] == "biannual" and 
         day_index > 365 and 
         Plant["phenology_stage"] == "vegetative"):
             Plant["phenology_stage"] = "reproduction"
+            update_phenological_parameters(Plant)
             return
 
     # Switch to reproduction if sugar slope is negative
-    if (sugar_slope < -1e-9 and 
-        Plant["phenology_stage"] != "reproduction" and 
-        Plant["growth_type"] != "biannual"):
-        if Plant["growth_type"] == "annual":
-            Plant["reproduction_ref"] = Plant["biomass_total"]
-            Plant["phenology_stage"] = "reproduction"
-        elif Plant["growth_type"] == "perennial":
+    if sugar_slope < -1e-9:
+        if Plant["growth_type"] == "perennial":
             Plant["phenology_stage"] = "making_reserve"
+            update_phenological_parameters(Plant)
         return
     
     # Photoperiod-based transitions
-    if (sugar_slope < -1e-9 and 
-        Plant["phenology_stage"] != "reproduction"):
-        if (Plant["growth_type"] == "biannual" and 
-            Plant["phenology_stage"] != "making_reserve" and
-            day_index < 365):
-            Plant["phenology_stage"] = "making_reserve"
-        elif (Plant["growth_type"] == "biannual" and 
-              day_index > 365 and 
-              Plant["phenology_stage"] != "dessication"):
-            Plant["phenology_stage"] = "dessication"
-            Plant["ratio_allocation"]["repro"] = 0.0
-            check_allocation(Plant)
-        elif (sugar_slope < -1e-9 and Plant["growth_type"] == "perennial"
+    if sugar_slope < -1e-9:
+        if (sugar_slope < -1e-9 and Plant["growth_type"] == "perennial"
               and Plant["phenology_stage"] != "dessication"):
             Plant["phenology_stage"] = "dessication"
             Plant["ratio_allocation"]["repro"] = 0.0
@@ -1017,7 +975,9 @@ def manage_phenology(Plant, Env, day_index, daily_min_temps):
     # 4) On appelle cette fonction "spécialisée"
     handler(Plant, Env, day_index, daily_min_temps)
 
-
+def update_phenological_parameters(Plant):
+    ph = Plant["phenology_stage"]
+    Plant["reserve_ratio"] = Plant["reserve_ratio_ps"][ph]
 
 def intitialize_state_variables(Plant):
     """
@@ -1035,16 +995,9 @@ def intitialize_state_variables(Plant):
         "reproduction": False,
         "transpiration": False
     }
-    Plant["adjusted_used"] = {
-        "maintenance": False,
-        "extension": False,
-        "reproduction": False,
-        "transpiration": False
-    }
     Plant["success_cycle"] = {"extension": 1.0, "reproduction": 1.0}
     Plant["cost"] = {
         "extension": {"sugar": 0.0, "water": 0.0, "nutrient": 0.0},
-        "reproduction": {"sugar": 0.0, "water": 0.0, "nutrient": 0.0},
         "maintenance": {"sugar": 0.0, "water": 0.0, "nutrient": 0.0},
         "transpiration": {"sugar": 0.0, "water": 0.0, "nutrient": 0.0}
     }

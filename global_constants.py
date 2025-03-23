@@ -12,7 +12,7 @@ names remain in French for compatibility with other parts of the project.
 
 # Basic global time parameters
 time = 0                # discrete simulation time (in hours)
-max_cycles = 24 * 540   # default maximum cycles if needed
+max_cycles = 24 * 220   # default maximum cycles if needed
 DT = 3600               # time step in seconds (1 hour)
 
 # Rate of adaptation for certain parameters in the model
@@ -47,13 +47,13 @@ RATIO_H2O_C6H12O6 = 0.6         # ratio of water used per sugar formed
 K = 0.1                         # example conduction factor (W/°C per g of leaf)
 
 # Categories of biomass within the plant
-biomass_function = ["support", "photo", "absorp"]
+biomass_function = ["support", "photo", "absorp", "repro"]
 
 # Resources used by the plant (in grams)
 resource = ["sugar", "water", "nutrient"]
 
 # Physiological processes handled in the model
-physiologic_process = ["transpiration", "maintenance", "extension", "reproduction"]
+physiologic_process = ["transpiration", "maintenance", "extension"]
 
 
 #######################################

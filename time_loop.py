@@ -59,9 +59,6 @@ def run_simulation_collect_data(max_cycles):
     day_min_temp = float('inf')
     previous_day_index = 0
 
-    # Track the maximum biomass reached by the plant
-    Pl.Plant["max_biomass"] = Pl.Plant["biomass_total"]
-
     # Run the simulation loop until max_cycles or the plant dies
     while Pl.Plant["alive"] and cycle_count < max_cycles:
         sim_time += 1
@@ -133,18 +130,12 @@ def run_simulation_collect_data(max_cycles):
         # Optional: environment hazards like wind or insects, if desired
         # Ev.environment_hazards(Pl.Plant, Ev.Environment)
 
-        # 1) Compute potential biomass increment
-        Pl.Plant["new_biomass"] = Fu.calculate_potential_new_biomass(
-            Pl.Plant, Pl.Plant["biomass_total"]
-        )
-        Pl.Plant["max_biomass"] += Pl.Plant["new_biomass"]
-
         # 2) Calculate maintenance costs
-        Fu.calculate_cost(Pl.Plant, Ev.Environment, "maintenance")
+        Fu.calculate_cost(Pl.Plant, "maintenance")
 
         # 3) If not dormant and there is light, adjust leaf transpiration parameters
         if (Pl.Plant["phenology_stage"] != "dormancy"
-            and Ev.Environment["atmos"]["light"] > 0.0):
+            and Ev.Environment["atmos"]["light"] > 10.0):
             Be.adjust_leaf_params_angle(
                 Pl.Plant,
                 Ev.Environment,
@@ -155,20 +146,21 @@ def run_simulation_collect_data(max_cycles):
 
         # 4) Soil nutrient absorption
         Fu.nutrient_absorption(Pl.Plant, Ev.Environment)
+        #print("photosynthesis estimate before maint.:", Pl.Plant["flux_in"]["sugar"])
 
         # 5) Pay maintenance (handle_process checks resources and uses them)
         Fu.handle_process(Pl.Plant, Ev.Environment, "maintenance")
-
+        #print("photosynthesis estimate after maint.:", Pl.Plant["flux_in"]["sugar"])
+        
         # Continue with extension / reproduction only if there's enough light
-        if Ev.Environment["atmos"]["light"] > 0.0:
+        if Ev.Environment["atmos"]["light"] > 10.0:
+            Fu.calculate_potential_new_biomass(Pl.Plant)
+            #print("new biomass : ",Pl.Plant["new_biomass"])
             # Calculate extension and reproduction costs
-            Fu.calculate_cost(Pl.Plant, Ev.Environment, "extension")
-            Fu.calculate_cost(Pl.Plant, Ev.Environment, "reproduction")
+            Fu.calculate_cost(Pl.Plant, "extension")
 
             # If in reproduction stage
             if Pl.Plant["phenology_stage"] == "reproduction":
-                Fu.handle_process(Pl.Plant, Ev.Environment, "reproduction")
-                Fu.update_success_history(Pl.Plant, "reproduction")
                 Fu.adapt_for_reproduction(Pl.Plant)
 
             # If in dessication stage
@@ -176,7 +168,8 @@ def run_simulation_collect_data(max_cycles):
                 Fu.dessication(Pl.Plant, Ev.Environment, day_index)
 
             # If in vegetative stage
-            if Pl.Plant["phenology_stage"] == "vegetative":
+            if (Pl.Plant["phenology_stage"] == "vegetative" or 
+                Pl.Plant["phenology_stage"] == "reproduction"):
                 Fu.handle_process(Pl.Plant, Ev.Environment, "extension")
                 Fu.update_success_history(Pl.Plant, "extension")
 
