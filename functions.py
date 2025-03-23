@@ -178,6 +178,8 @@ def ensure_maintenance_sugar(Plant, Env):
             destroy_here = min(can_destroy, mass_to_destroy)
 
             Plant["biomass"][comp] -= destroy_here
+            Plant["reserve"]["water"] -= destroy_here
+            
             if comp in ["necromass", "repro"]:
                 Env["litter"]["necromass"] += destroy_here
             else:
@@ -417,8 +419,9 @@ def compute_cell_water_draw(Plant):
     # Seuil minimal d’eau = 15% de la biomasse (par défaut),
     # en dessous duquel on considère la plante en flétrissement sévère.
     min_cell_water = Plant["max_turgor_loss_frac"] * biomass
-
+    #print("min_cell_water:" ,min_cell_water )
     delta = water_reserve - min_cell_water
+    #print("delta:" ,delta)
     if delta <= 0.0:
         # La réserve est déjà sous le seuil
         return 0.0
@@ -428,7 +431,7 @@ def compute_cell_water_draw(Plant):
     #   draw = delta * ratio
     # =>  - si delta est très petit, ratio ~ delta/... => draw << delta 
     #     - si delta est grand, ratio -> 1 => draw ~ delta
-    alpha = 0.2 * min_cell_water
+    alpha = 0.02 * min_cell_water
     ratio = 1.0 - math.exp(- delta / alpha)  
     draw_possible = delta * ratio
 

@@ -326,23 +326,30 @@ def adjust_leaf_params_angle(
     Plant["r_stomatal"]           = 1.0 / max(best_sc, 1e-6)
     #print("with a Gs=", Plant["stomatal_conductance"]," and a leaf angle of :",Plant["leaf_angle"] )
     #print("air temp", Env["atmos"]["temperature"])
+
     # 5) Recalcule les variables finales sur le "vrai" Plant
     compute_leaf_temperature(Plant, Env, method)
     Fu.photosynthesis(Plant, Env)
+
     Fu.compute_max_transpiration_capacity(Plant, Env)
     usable_reserve = Fu.compute_cell_water_draw(Plant)
     delta_water = Plant["max_transpiration_capacity"] - Plant["cost"]["transpiration"]["water"]
-    if is_reserve and Plant["transp_limit_pool"] == "soil":
+    if delta_water < 0.0:
+        print("delta_warter:", delta_water )
+        print("usable reserve water:",usable_reserve)
+    if is_reserve and Plant["transp_limit_pool"] != "photo":
+        Plant["reserve_used"]["transpiration"] = True
         Plant["max_transpiration_capacity"] += min(usable_reserve, abs(delta_water))
         Plant["reserve"]["water"] -= min(usable_reserve, abs(delta_water))
     else:
         if Plant["reserve"]["water"] < Plant["biomass_total"]:
-            Plant["reserve"]["water"] += abs(delta_water)
-            Plant["max_transpiration_capacity"] -= abs(delta_water)
+            need_water = min(abs(delta_water), Plant["biomass_total"] - Plant["reserve"]["water"])
+            Plant["reserve"]["water"] += need_water 
+            Plant["max_transpiration_capacity"] -= need_water 
     #print("photosynthesis estimate:", Plant["flux_in"]["sugar"])
     #print("transpiration estimate:", Plant["cost"]["transpiration"]["water"] )
     #print("Max transpiration", capacity )
     #print("leaf tempertature",  Plant["temperature"]["photo"]  )
     Plant["flux_in"]["water"] = (Plant["max_transpiration_capacity"] - 
                                  Plant["cost"]["transpiration"]["water"] )
-    return  # le Plant est mis à jour in-place
+    return  

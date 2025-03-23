@@ -246,7 +246,7 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
     ax = day_axes[3, 1]
     ax.plot(day_date_list, day_data["reserve_used_maintenance"], label="Maint.", color="orange")
     ax.plot(day_date_list, day_data["reserve_used_extension"], label="Ext.", color="green")
-    ax.plot(day_date_list, day_data["reserve_used_reproduction"], label="Repr.", color="violet")
+    ax.plot(day_date_list, day_data["reserve_used_transpiration"], label="Transp.", color="blue")
     ax.set_xlabel("Date")
     ax.set_ylabel("0 ou 1")
     ax.set_title("reserve_used (bool)")

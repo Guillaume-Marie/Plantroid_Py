@@ -48,7 +48,6 @@ history = {
     # Resource usage flags (0 or 1)
     "reserve_used_maintenance": [],
     "reserve_used_extension": [],
-    "reserve_used_reproduction": [],
     "reserve_used_transpiration": [],
     # Process costs
     "cost_transpiration_water": [],
@@ -136,7 +135,6 @@ def history_update(Plant, history, Environment, time):
     # Resource usage flags
     history["reserve_used_maintenance"].append(int(Plant["reserve_used"]["maintenance"]))
     history["reserve_used_extension"].append(int(Plant["reserve_used"]["extension"]))
-    history["reserve_used_reproduction"].append(int(Plant["reserve_used"]["reproduction"]))
     history["reserve_used_transpiration"].append(int(Plant["reserve_used"]["transpiration"]))
     # Process costs
     history["cost_transpiration_water"].append(Plant["cost"]["transpiration"]["water"])

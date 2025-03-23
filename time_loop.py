@@ -151,7 +151,7 @@ def run_simulation_collect_data(max_cycles):
         # 5) Pay maintenance (handle_process checks resources and uses them)
         Fu.handle_process(Pl.Plant, Ev.Environment, "maintenance")
         #print("photosynthesis estimate after maint.:", Pl.Plant["flux_in"]["sugar"])
-        
+
         # Continue with extension / reproduction only if there's enough light
         if Ev.Environment["atmos"]["light"] > 10.0:
             Fu.calculate_potential_new_biomass(Pl.Plant)
@@ -175,7 +175,6 @@ def run_simulation_collect_data(max_cycles):
 
             # Finally, transfer any remaining flux_in to internal reserves
             Fu.refill_reserve(Pl.Plant, "sugar")
-            #Fu.refill_reserve(Pl.Plant, "water")
             Fu.refill_reserve(Pl.Plant, "nutrient")
 
         # Check for negative pools or fluxes, stop if it occurs
