@@ -251,6 +251,7 @@ def adjust_leaf_params_angle(
 
     for i in range(steps+1):
         for j in range(steps+1):
+            reserve_used = False
             # Valeurs candidates
             sc_candidate    = c_min + i*dc
             angle_candidate = j*da
@@ -274,7 +275,12 @@ def adjust_leaf_params_angle(
 
             #   c) Calculer la transpiration maxi
             Fu.compute_max_transpiration_capacity(Plant, Env)
-   
+            usable_reserve = Fu.compute_cell_water_draw(Plant)
+            delta_water = Plant["max_transpiration_capacity"] - Plant["cost"]["transpiration"]["water"]
+            if delta_water < 0.0 and  Plant["transp_limit_pool"] == "soil":
+                Plant["max_transpiration_capacity"] += min(usable_reserve, abs(delta_water))
+                reserve_used =True
+
             #   e) Récupérer:
             #  - photosynth = Plant["flux_in"]["sugar"]
             #  - cost_water = Plant["cost"]["transpiration"]["water"] + (cooling if you have it)
@@ -312,6 +318,7 @@ def adjust_leaf_params_angle(
                 best_score = score
                 best_sc    = sc_candidate
                 best_angle = angle_candidate
+                is_reserve = reserve_used
 
     # 4) Après exploration, on applique le meilleur
     Plant["stomatal_conductance"] = best_sc
@@ -323,6 +330,15 @@ def adjust_leaf_params_angle(
     compute_leaf_temperature(Plant, Env, method)
     Fu.photosynthesis(Plant, Env)
     Fu.compute_max_transpiration_capacity(Plant, Env)
+    usable_reserve = Fu.compute_cell_water_draw(Plant)
+    delta_water = Plant["max_transpiration_capacity"] - Plant["cost"]["transpiration"]["water"]
+    if is_reserve and Plant["transp_limit_pool"] == "soil":
+        Plant["max_transpiration_capacity"] += min(usable_reserve, abs(delta_water))
+        Plant["reserve"]["water"] -= min(usable_reserve, abs(delta_water))
+    else:
+        if Plant["reserve"]["water"] < Plant["biomass_total"]:
+            Plant["reserve"]["water"] += abs(delta_water)
+            Plant["max_transpiration_capacity"] -= abs(delta_water)
     #print("photosynthesis estimate:", Plant["flux_in"]["sugar"])
     #print("transpiration estimate:", Plant["cost"]["transpiration"]["water"] )
     #print("Max transpiration", capacity )

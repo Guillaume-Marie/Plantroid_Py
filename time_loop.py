@@ -173,7 +173,7 @@ def run_simulation_collect_data(max_cycles):
 
             # If in dessication stage
             if Pl.Plant["phenology_stage"] == "dessication":
-                Fu.dessication(Pl.Plant, Ev.Environment)
+                Fu.dessication(Pl.Plant, Ev.Environment, day_index)
 
             # If in vegetative stage
             if Pl.Plant["phenology_stage"] == "vegetative":
@@ -182,7 +182,7 @@ def run_simulation_collect_data(max_cycles):
 
             # Finally, transfer any remaining flux_in to internal reserves
             Fu.refill_reserve(Pl.Plant, "sugar")
-            Fu.refill_reserve(Pl.Plant, "water")
+            #Fu.refill_reserve(Pl.Plant, "water")
             Fu.refill_reserve(Pl.Plant, "nutrient")
 
         # Check for negative pools or fluxes, stop if it occurs

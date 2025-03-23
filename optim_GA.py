@@ -343,16 +343,16 @@ def ga_multi_criteria_optimization(
 if __name__ == "__main__":
     # Example usage: runs the GA and then plots a simulation with the best config
     best_config, best_score = ga_multi_criteria_optimization(
-        species_name="ble",
+        species_name="mais",
         population_size=20,
         generations=20,
         crossover_rate=0.7,
         mutation_rate=0.1,
         elite_size=2,
-        B_max=4.0,
-        B_min=2.0,
-        BT_min=2.0,
-        BT_max=4.0,
+        B_max=400.0,
+        B_min=200.0,
+        BT_min=200.0,
+        BT_max=400.0,
         BL_min=0.0,
         BL_max=0.1,
         alpha_biomass=1.0,
@@ -360,4 +360,4 @@ if __name__ == "__main__":
         alpha_sugar=1.0,
         alpha_stability=0.0
     )
-    Rp.simulate_and_plot("ble")
+    Rp.simulate_and_plot("mais")

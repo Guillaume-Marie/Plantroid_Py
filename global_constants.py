@@ -12,7 +12,7 @@ names remain in French for compatibility with other parts of the project.
 
 # Basic global time parameters
 time = 0                # discrete simulation time (in hours)
-max_cycles = 24 * 220   # default maximum cycles if needed
+max_cycles = 24 * 540   # default maximum cycles if needed
 DT = 3600               # time step in seconds (1 hour)
 
 # Rate of adaptation for certain parameters in the model

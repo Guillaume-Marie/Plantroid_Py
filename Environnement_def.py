@@ -39,9 +39,9 @@ Environment = {
     "seasonal_light_var": 0.5,     # fraction of light variation winter vs summer
 
     "precipitation_base": 1.9,     # mm of rain per day on average
-    "seasonal_rain_var": 0.01,     # fraction for seasonal variation in rain
+    "seasonal_rain_var": 0.3,     # fraction for seasonal variation in rain
     "random_factor": 0.3,          # intensity of random weather factor (30%)
-    "soil_volume": 0.01            # volume of soil in m³
+    "soil_volume": 0.02            # volume of soil in m³
 }
 
 

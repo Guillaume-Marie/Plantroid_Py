@@ -177,8 +177,8 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
     ax = day_axes[0, 3]
     ax.plot(day_date_list, day_data["biomass_total"], label="Biomasse", color="green")
     ax.plot(day_date_list, day_data["biomass_necromass"], label="Nécromasse", color="brown")
-    if "max_biomass" in day_data:
-        ax.plot(day_date_list, day_data["max_biomass"], label="Théorique", color="black", linestyle="dotted")
+    #if "max_biomass" in day_data:
+        #ax.plot(day_date_list, day_data["max_biomass"], label="Théorique", color="black", linestyle="dotted")
     ax.set_xlabel("Date")
     ax.set_ylabel("Biomasse (g)")
     ax.set_title("Évolution : vivante vs nécromasse")
@@ -396,7 +396,7 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
     day_fig.autofmt_xdate(rotation=45)
     day_fig.tight_layout()
     plt.show()
-    
+
     ########################################################################
     #                      PART B : NIGHT FIGURE (7×3)                      #
     ########################################################################

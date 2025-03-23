@@ -55,6 +55,7 @@ def set_plant_species(Plant, species_name, species_db):
     Plant["storage_fraction"] = params["storage_fraction"]
     Plant["ratio_allocation"] = params["ratio_allocation"]
     Plant["cannibal_ratio"] = params["cannibal_ratio"]
+    Plant["max_turgor_loss_frac"] = params["max_turgor_loss_frac"]    
     Plant["cost_params"] = params["cost_params"]
     Plant["reserve"] = params["reserve"]
     Plant["size"] = params["size"]
@@ -149,22 +150,23 @@ species_db = {
         "T_optim": 22.0,
         "r_max": 5.0e-3,
         "alpha": 8.00e-4,
-        "temp_photo_sensitivity": 0.03,
+        "temp_photo_sensitivity": 0.07,
         "sla_max": 0.02,
         "stomatal_conductance_min": 0.01,
         "leaf_size": 0.05,
         "leaf_albedo": 0.25,
         "leaf_emissivity": 0.95,
-        "watt_to_sugar_coeff": 0.00004,
+        "watt_to_sugar_coeff": 2e-5,
         "support_transport_coeff": 2e-2,
         "soil_supply_coeff": 0.1,
         "water_nutrient_coeff": 3.5e-4,
-        "stomatal_density": 38658154,
+        "stomatal_density": 4e7,
         "alloc_change_rate": Gl.delta_adapt / 5,
         "alloc_repro_max": 0.84,
         "dessication_rate": Gl.delta_adapt * 3,
         "support_turnover": Gl.delta_adapt / 20,
         "cannibal_ratio": 0.3,
+        "max_turgor_loss_frac": 0.10,
         "cost_params": {
             "extension": {
                 "photo": {"sugar": 0.5, "water": 0.75, "nutrient": 0.02},
@@ -186,26 +188,27 @@ species_db = {
     },
 
     "mais": {
-        "growth_type": "annual",
-        "photoperiod_for_repro": 15.5,
-        "T_optim": 32.0,
-        "r_max": 1.13e-2,
-        "alpha": 4.5e-3,
-        "temp_photo_sensitivity": 0.03,
-        "sla_max": 0.02,
-        "stomatal_conductance_min": 0.03,
-        "leaf_size": 0.05,
-        "leaf_albedo": 0.25,
-        "leaf_emissivity": 0.95,
-        "watt_to_sugar_coeff": 4.0e-6,
-        "support_transport_coeff": 5e-3,
-        "soil_supply_coeff": 0.1,
-        "water_nutrient_coeff": 7e-3,
-        "stomatal_density": 6.0e7,
-        "alloc_change_rate": Gl.delta_adapt / 4,
-        "alloc_repro_max": 0.95,
-        "dessication_rate": Gl.delta_adapt * 3,
-        "support_turnover": Gl.delta_adapt / 20,
+    "growth_type": "annual",   
+    "T_optim": 25.0,                   # (°C) Température optimale pour la photosynthèse.
+    "temp_photo_sensitivity": 0.03,    # (°C⁻¹) Sensibilité (linéaire) de la photosynthèse à l’écart de T_optim.
+    "r_max": 1.1e-2,                   # (h⁻¹) Taux de croissance « structurel » maximal (ex. +25–30 %/jour).
+    "alpha": 4.5e-3,                   # (g⁻¹) Paramètre de saturation de la croissance monomoléculaire.
+    "sla_max": 0.02,                   # (gFeuille/m²) Surface foliaire spécifique maximale.
+    "leaf_size": 0.05,                 # (m) Dimension caractéristique d’une feuille (pour les calculs de r_a).
+    "leaf_albedo": 0.25,               # (fraction) Albédo foliaire (fraction réfléchie).
+    "leaf_emissivity": 0.95,           # (fraction) Émissivité dans l’IR.
+    "watt_to_sugar_coeff": 8e-5,       # (conversion J/s -> gC6H12O6/s) Efficacité de conversion lumière→sucres.
+    "support_transport_coeff": 2e-2,   # (g/s/MPa)/gSupport ; capacité de transport (sève, rigidité tige).
+    "soil_supply_coeff": 0.1,          # (adimensionnel) Efficacité générale d’extraction de ressources du sol.
+    "water_nutrient_coeff": 3.5e-4,    # (adimensionnel) Taux de nutriments absorbés par g d’eau transpiré.
+    "stomatal_density": 10e8,          # (stomates/m²) Densité moyenne de stomates (ordre de 10⁷–10⁸).
+    "stomatal_conductance_min": 0.02,  # (adimensionnel) Ouverture minimale (0..1) pour éviter fermeture complète.
+    "alloc_repro_max": 0.95,           # (fraction) Allocation max possible vers la reproduction.
+    "alloc_change_rate": Gl.delta_adapt / 3,  
+    "dessication_rate": Gl.delta_adapt * 3, 
+    "support_turnover": Gl.delta_adapt / 20,
+    "cannibal_ratio": 0.3,              # (gSucre/gBiomasse) Sucre récupérable par cannibalisation de biomasse.        
+    "max_turgor_loss_frac": 0.10,
         "cost_params": {
             "extension": {
                 "photo": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
@@ -216,7 +219,7 @@ species_db = {
                 "unique": {"sugar": 0.5, "water": 0.25, "nutrient": 0.0}
             },
             "maintenance": {
-                "unique": {"sugar": 0.0000005, "water": 0.0, "nutrient": 0.0}
+                "unique": {"sugar": 5.0e-7, "water": 0.0, "nutrient": 0.0}
             }
         },
         "storage_fraction": {"sugar": 0.05, "water": 0.05, "nutrient": 0.05},
@@ -228,33 +231,34 @@ species_db = {
 
     "biannual herbaceous": {
         "growth_type": "biannual",
-        "photoperiod_for_repro": 12.0,
         "T_optim": 25.0,
+        "temp_photo_sensitivity": 0.03,    # (°C⁻¹) Sensibilité (linéaire) de la photosynthèse à l’écart de T_optim.
         "r_max": 4.78e-3,
         "alpha": 8.13e-4,
-        "temp_photo_sensitivity": 0.03,
-        "sla_max": 0.02,
-        "stomatal_conductance_min": 0.01,
-        "leaf_size": 0.05,
-        "leaf_albedo": 0.25,
-        "leaf_emissivity": 0.95,
-        "watt_to_sugar_coeff": 1.7e-6,
-        "support_transport_coeff": 5e-3,
-        "soil_supply_coeff": 0.1,
-        "water_nutrient_coeff": 3e-3,
-        "stomatal_density": 5.0e7,
-        "alloc_change_rate": Gl.delta_adapt / 4,
-        "alloc_repro_max": 0.75,
-        "dessication_rate": Gl.delta_adapt,
+        "sla_max": 0.02,                   # (gFeuille/m²) Surface foliaire spécifique maximale.
+        "leaf_size": 0.05,                 # (m) Dimension caractéristique d’une feuille (pour les calculs de r_a).
+        "leaf_albedo": 0.25,               # (fraction) Albédo foliaire (fraction réfléchie).
+        "leaf_emissivity": 0.95,           # (fraction) Émissivité dans l’IR.
+        "watt_to_sugar_coeff": 4e-5,       # (conversion J/s -> gC6H12O6/s) Efficacité de conversion lumière→sucres.
+        "support_transport_coeff": 2e-2,   # (g/s/MPa)/gSupport ; capacité de transport (sève, rigidité tige).
+        "soil_supply_coeff": 0.1,          # (adimensionnel) Efficacité générale d’extraction de ressources du sol.
+        "water_nutrient_coeff": 8.5e-4,    # (adimensionnel) Taux de nutriments absorbés par g d’eau transpiré.
+        "stomatal_density": 10e8,          # (stomates/m²) Densité moyenne de stomates (ordre de 10⁷–10⁸).
+        "stomatal_conductance_min": 0.02,  # (adimensionnel) Ouverture minimale (0..1) pour éviter fermeture complète.
+        "alloc_repro_max": 0.95,           # (fraction) Allocation max possible vers la reproduction.
+        "alloc_change_rate": Gl.delta_adapt / 3,  
+        "dessication_rate": Gl.delta_adapt * 3, 
         "support_turnover": Gl.delta_adapt / 20,
+        "cannibal_ratio": 0.3,              # (gSucre/gBiomasse) Sucre récupérable par cannibalisation de biomasse.        
+        "max_turgor_loss_frac": 0.10,
         "cost_params": {
             "extension": {
-                "photo": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
-                "absorp": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},
-                "support": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0}
+                "photo": {"sugar": 0.5, "water": 0.75, "nutrient": 0.02},
+                "absorp": {"sugar": 0.5, "water": 0.75, "nutrient": 0.02},
+                "support": {"sugar": 0.5, "water": 0.75, "nutrient": 0.01}
             },
             "reproduction": {
-                "unique": {"sugar": 0.5, "water": 0.25, "nutrient": 0.0}
+                "unique": {"sugar": 0.5, "water": 0.75, "nutrient": 0.02}
             },
             "maintenance": {
                 "unique": {"sugar": 0.0000005, "water": 0.0, "nutrient": 0.0}
@@ -262,7 +266,7 @@ species_db = {
         },
         "storage_fraction": {"sugar": 0.05, "water": 0.05, "nutrient": 0.05},
         "ratio_allocation": {"support": 0.2, "absorp": 0.3, "photo": 0.5, "repro": 0.0},
-        "reserve": {"sugar": 0.039, "water": 0.01, "nutrient": 0.001},
+        "reserve": {"sugar": 0.039, "water": 0.01, "nutrient": 0.01},
         "size": 1.0,
         "biomass_total": 0.01
     },
