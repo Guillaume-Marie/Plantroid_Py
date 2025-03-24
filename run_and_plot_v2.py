@@ -555,7 +555,6 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
     ax = night_axes[6, 0]
     ax.plot(night_date_list, night_data["reserve_used_maintenance"], label="Maint.", color="brown")
     ax.plot(night_date_list, night_data["reserve_used_extension"], label="Ext.", color="orange")
-    ax.plot(night_date_list, night_data["reserve_used_reproduction"], label="Repr.", color="violet")
     ax.set_xlabel("Date")
     ax.set_ylabel("0 ou 1")
     ax.set_title("reserve_used (nuit)")
@@ -607,4 +606,4 @@ if __name__ == "__main__":
     # Example usage: 
     # You can specify the real start date for day 1,
     # e.g. 1 Jan 2025
-    simulate_and_plot("ble", start_date=datetime(2025, 1, 1))
+    simulate_and_plot("perennial herbaceous", start_date=datetime(2025, 1, 1))

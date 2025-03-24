@@ -187,7 +187,7 @@ species_db = {
 
     "mais": {
     "growth_type": "annual",   
-    "T_optim": 25.0,                   # (°C) Température optimale pour la photosynthèse.
+    "T_optim": 30.0,                   # (°C) Température optimale pour la photosynthèse.
     "temp_photo_sensitivity": 0.03,    # (°C⁻¹) Sensibilité (linéaire) de la photosynthèse à l’écart de T_optim.
     "r_max": 1.1e-2,                   # (h⁻¹) Taux de croissance « structurel » maximal (ex. +25–30 %/jour).
     "alpha": 4.5e-3,                   # (g⁻¹) Paramètre de saturation de la croissance monomoléculaire.
@@ -205,6 +205,10 @@ species_db = {
     "alloc_change_rate": Gl.delta_adapt / 3,  
     "dessication_rate": Gl.delta_adapt * 3, 
     "support_turnover": Gl.delta_adapt / 20,
+    "reserve_ratio_ps": {"vegetative": 0.01/12, 
+                          "making_reserve": 0.0, 
+                          "reproduction": 0.05/12
+                        },
     "cannibal_ratio": 0.3,              # (gSucre/gBiomasse) Sucre récupérable par cannibalisation de biomasse.        
     "max_turgor_loss_frac": 0.10,
         "cost_params": {
@@ -235,7 +239,7 @@ species_db = {
         "leaf_size": 0.05,                 # (m) Dimension caractéristique d’une feuille (pour les calculs de r_a).
         "leaf_albedo": 0.25,               # (fraction) Albédo foliaire (fraction réfléchie).
         "leaf_emissivity": 0.95,           # (fraction) Émissivité dans l’IR.
-        "watt_to_sugar_coeff": 4e-5,       # (conversion J/s -> gC6H12O6/s) Efficacité de conversion lumière→sucres.
+        "watt_to_sugar_coeff": 3.5e-5,       # (conversion J/s -> gC6H12O6/s) Efficacité de conversion lumière→sucres.
         "support_transport_coeff": 2e-2,   # (g/s/MPa)/gSupport ; capacité de transport (sève, rigidité tige).
         "soil_supply_coeff": 0.1,          # (adimensionnel) Efficacité générale d’extraction de ressources du sol.
         "water_nutrient_coeff": 8.5e-4,    # (adimensionnel) Taux de nutriments absorbés par g d’eau transpiré.
@@ -243,10 +247,16 @@ species_db = {
         "stomatal_conductance_min": 0.02,  # (adimensionnel) Ouverture minimale (0..1) pour éviter fermeture complète.
         "alloc_repro_max": 0.95,           # (fraction) Allocation max possible vers la reproduction.
         "alloc_change_rate": Gl.delta_adapt / 3,  
-        "dessication_rate": Gl.delta_adapt * 3, 
+        "dessication_rate": Gl.delta_adapt*2, 
         "support_turnover": Gl.delta_adapt / 20,
         "cannibal_ratio": 0.3,              # (gSucre/gBiomasse) Sucre récupérable par cannibalisation de biomasse.        
         "max_turgor_loss_frac": 0.10,
+        "reserve_ratio_ps": {"vegetative": 0.01/12, 
+                          "making_reserve": 0.0, 
+                          "dessication": 0.01/12,
+                          "dormancy": 0.1,
+                          "reproduction": 0.3/12
+                        },
         "cost_params": {
             "extension": {
                 "photo": {"sugar": 0.5, "water": 0.75, "nutrient": 0.02},
@@ -267,25 +277,32 @@ species_db = {
 
     "perennial herbaceous": {
         "growth_type": "perennial",
-        "photoperiod_for_repro": 15.5,
         "T_optim": 25.0,
-        "r_max": 2.78e-3,
+        "temp_photo_sensitivity": 0.03,    # (°C⁻¹) Sensibilité (linéaire) de la photosynthèse à l’écart de T_optim.
+        "r_max": 2.28e-3,
         "alpha": 8.13e-4,
-        "temp_photo_sensitivity": 0.05,
-        "sla_max": 0.02,
-        "stomatal_conductance_min": 0.01,
-        "leaf_size": 0.05,
-        "leaf_albedo": 0.25,
-        "leaf_emissivity": 0.95,
-        "watt_to_sugar_coeff": 1.7e-6,
-        "support_transport_coeff": 5e-3,
-        "soil_supply_coeff": 0.1,
-        "water_nutrient_coeff": 3e-3,
-        "stomatal_density": 5.0e7,
-        "alloc_change_rate": Gl.delta_adapt / 4,
-        "alloc_repro_max": 0.1,
-        "dessication_rate": Gl.delta_adapt * 3,
-        "support_turnover": Gl.delta_adapt / 20,
+        "sla_max": 0.02,                   # (gFeuille/m²) Surface foliaire spécifique maximale.
+        "leaf_size": 0.05,                 # (m) Dimension caractéristique d’une feuille (pour les calculs de r_a).
+        "leaf_albedo": 0.25,               # (fraction) Albédo foliaire (fraction réfléchie).
+        "leaf_emissivity": 0.95,           # (fraction) Émissivité dans l’IR.
+        "watt_to_sugar_coeff": 3.3e-5,       # (conversion J/s -> gC6H12O6/s) Efficacité de conversion lumière→sucres.
+        "support_transport_coeff": 2e-2,   # (g/s/MPa)/gSupport ; capacité de transport (sève, rigidité tige).
+        "soil_supply_coeff": 0.1,          # (adimensionnel) Efficacité générale d’extraction de ressources du sol.
+        "water_nutrient_coeff": 8.5e-4,    # (adimensionnel) Taux de nutriments absorbés par g d’eau transpiré.
+        "stomatal_density": 10e8,          # (stomates/m²) Densité moyenne de stomates (ordre de 10⁷–10⁸).
+        "stomatal_conductance_min": 0.02,  # (adimensionnel) Ouverture minimale (0..1) pour éviter fermeture complète.
+        "alloc_repro_max": 0.05,           # (fraction) Allocation max possible vers la reproduction.
+        "alloc_change_rate": Gl.delta_adapt / 3,  
+        "dessication_rate": Gl.delta_adapt*2, 
+        "support_turnover": Gl.delta_adapt / 5,
+        "cannibal_ratio": 0.3,              # (gSucre/gBiomasse) Sucre récupérable par cannibalisation de biomasse.        
+        "max_turgor_loss_frac": 0.10,
+        "reserve_ratio_ps": {"vegetative": 0.01/12, 
+                          "making_reserve": 0.0, 
+                          "dessication": 0.01/12,
+                          "dormancy": 0.1,
+                          "reproduction": 0.3/12
+                        },
         "cost_params": {
             "extension": {
                 "photo": {"sugar": 0.5, "water": 0.75, "nutrient": 0.0},

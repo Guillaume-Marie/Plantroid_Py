@@ -155,7 +155,8 @@ def run_simulation_collect_data(max_cycles):
         # Continue with extension / reproduction only if there's enough light
         if Ev.Environment["atmos"]["light"] > 10.0:
             Fu.calculate_potential_new_biomass(Pl.Plant)
-            #print("new biomass : ",Pl.Plant["new_biomass"])
+            if Pl.Plant["phenology_stage"] == "reproduction":
+                print("new biomass : ",Pl.Plant["new_biomass"])
             # Calculate extension and reproduction costs
             Fu.calculate_cost(Pl.Plant, "extension")
 

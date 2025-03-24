@@ -110,7 +110,7 @@ def restore_health(Plant):
         Plant["health_state"] += 1
 
 
-def destroy_biomass(Plant, Env, which_biomass, process, damage_factor=None):
+def destroy_biomass(Plant, Env, which_biomass, damage_factor=None):
     """
     Destroys a fraction of the specified biomass compartment and adds it
      to necromass.
@@ -122,8 +122,6 @@ def destroy_biomass(Plant, Env, which_biomass, process, damage_factor=None):
     Env : dict
     which_biomass : str
         A key in Plant["biomass"] (e.g. "photo", "support", "absorp", "necromass")
-    process : str or None
-        The name of the process causing destruction, if applicable (else None).
     damage_factor : float
         Fraction of biomass to destroy. If None, defaults to Gl.delta_adapt.
     """
@@ -133,6 +131,7 @@ def destroy_biomass(Plant, Env, which_biomass, process, damage_factor=None):
 
     lost = Plant["biomass"][which_biomass] * damage_factor
     Plant["biomass"][which_biomass] -= lost
+    Plant["reserve"]["water"] -= lost
 
     if which_biomass in ["necromass", "repro"]:
         Env["litter"]["necromass"] += lost
@@ -179,7 +178,7 @@ def ensure_maintenance_sugar(Plant, Env):
 
             Plant["biomass"][comp] -= destroy_here
             Plant["reserve"]["water"] -= destroy_here
-            
+
             if comp in ["necromass", "repro"]:
                 Env["litter"]["necromass"] += destroy_here
             else:
@@ -551,10 +550,11 @@ def calculate_potential_new_biomass(Plant):
     alpha = Plant["alpha"]
     max_growth = Plant["biomass_total"] * (r_max / (1.0 + alpha * Plant["biomass_total"]))
     limiting_bio = max_growth
-    #print("max :",max_growth)
-    #print("sugar:",Plant["flux_in"]["sugar"])
-    #print("water:",Plant["flux_in"]["water"])
-    #print("nutrient:",Plant["flux_in"]["nutrient"])
+    #if Plant["phenology_stage"] == "reproduction":
+    #    print("max :",max_growth)
+    #    print("sugar:",Plant["flux_in"]["sugar"])
+    #    print("water:",Plant["flux_in"]["water"])
+    #    print("nutrient:",Plant["flux_in"]["nutrient"])
 
     for r in Gl.resource:
         max_bio = 0.0
@@ -605,7 +605,11 @@ def calculate_cost(Plant, process):
     - Reproduction: depends on reproduction_ref
     """
     if process == "maintenance":
-        cost_factor = Plant["cost_params"][process]["unique"]["sugar"]
+        if Plant["phenology_stage"] != "dormancy":
+            cost_factor = Plant["cost_params"][process]["unique"]["sugar"]
+        else:
+            cost_factor = Plant["cost_params"][process]["unique"]["sugar"]/4
+
         Plant["cost"][process]["sugar"] = (cost_factor * 
                                            Gl.DT * 
                                            Plant["biomass_total"])
@@ -784,21 +788,21 @@ def dessication(Plant, Env, day):
     (especially for annual or biannual). Perennials might only lose partial support.
     """
     if Plant["growth_type"] == "annual":
-        destroy_biomass(Plant, Env, "support", "extension", Plant["dessication_rate"])
-        destroy_biomass(Plant, Env, "absorp", "extension", Plant["dessication_rate"])
-        destroy_biomass(Plant, Env, "photo", "extension", Plant["dessication_rate"])
+        destroy_biomass(Plant, Env, "support", Plant["dessication_rate"])
+        destroy_biomass(Plant, Env, "absorp", Plant["dessication_rate"])
+        destroy_biomass(Plant, Env, "photo", Plant["dessication_rate"])
     elif Plant["growth_type"] == "perennial":
-        destroy_biomass(Plant, Env, "support", "extension", Plant["support_turnover"])
-        destroy_biomass(Plant, Env, "absorp", "extension", Plant["dessication_rate"])
-        destroy_biomass(Plant, Env, "photo", "extension", Plant["dessication_rate"])
+        destroy_biomass(Plant, Env, "support", Plant["support_turnover"])
+        destroy_biomass(Plant, Env, "absorp", Plant["dessication_rate"])
+        destroy_biomass(Plant, Env, "photo", Plant["dessication_rate"])
     elif Plant["growth_type"] == "biannual" and day < 365:
-        destroy_biomass(Plant, Env, "photo", "extension", Plant["dessication_rate"])
-        destroy_biomass(Plant, Env, "absorp", "extension", Plant["dessication_rate"])        
-        destroy_biomass(Plant, Env, "support", "extension", Plant["support_turnover"])
+        destroy_biomass(Plant, Env, "photo", Plant["dessication_rate"])
+        destroy_biomass(Plant, Env, "absorp", Plant["dessication_rate"])        
+        destroy_biomass(Plant, Env, "support", Plant["support_turnover"])
     elif Plant["growth_type"] == "biannual" and day > 365:
-        destroy_biomass(Plant, Env, "photo", "extension", Plant["dessication_rate"])   
-        destroy_biomass(Plant, Env, "absorp", "extension", Plant["dessication_rate"])
-        destroy_biomass(Plant, Env, "support", "extension", Plant["dessication_rate"])
+        destroy_biomass(Plant, Env, "photo", Plant["dessication_rate"])   
+        destroy_biomass(Plant, Env, "absorp", Plant["dessication_rate"])
+        destroy_biomass(Plant, Env, "support", Plant["dessication_rate"])
 
 def update_biomass_total(Plant):
     """
@@ -910,53 +914,67 @@ def phenology_biannual(Plant, Env, day_index, daily_min_temps):
     if (day_index < 365 and sugar_slope < -1e-9 and
         Plant["phenology_stage"] == "making_reserve"):
         Plant["phenology_stage"] = "dessication"
+        update_phenological_parameters(Plant)
         return
     
     # End-of-life dessication
     if Plant["biomass"]["photo"] < 0.001 and Plant["phenology_stage"] == "dessication":
         Plant["phenology_stage"] = "dormancy"
-        Plant["ratio_allocation"] = {"photo": 0.05, "support": 0.1, "absorp": 0.05, "repro": 0.8}
+        update_phenological_parameters(Plant)
+        Plant["ratio_allocation"] = {"photo": 0.2, 
+                                     "support": 0.2, 
+                                     "absorp": 0.2, 
+                                     "repro": Plant["alloc_repro_max"]}
         check_allocation(Plant)
 
 def phenology_perennial(Plant, Env, day_index, daily_min_temps):
     photoperiod_today = Ev.calc_daily_photoperiod(day_index)
     photoperiod_yesterday = Ev.calc_daily_photoperiod(day_index - 1)
-    sugar_slope = slope_last_hours(Hi.history["reserve_sugar"], nb_hours=24 * 3)
+    sugar_slope = slope_last_hours(Hi.history["reserve_sugar"], nb_hours=24 * 4)
+    photo_slope = slope_last_hours(Hi.history["pot_sugar"], nb_hours=24 * 4)
 
     # Germination check
-    if Plant["phenology_stage"] in ["seed", "dormancy"]:
+    if Plant["phenology_stage"] in ["seed"]:
         if len(daily_min_temps) >= 7 and all(t > 3.0 for t in daily_min_temps[-7:]):
             Plant["phenology_stage"] = "vegetative"
             update_phenological_parameters(Plant)
         return
     
-    if (Plant["growth_type"] == "biannual" and 
-        day_index > 365 and 
-        Plant["phenology_stage"] == "vegetative"):
+    if Plant["phenology_stage"] in ["dormancy"] and day_index > 365:
+        if len(daily_min_temps) >= 7 and all(t > 5.0 for t in daily_min_temps[-7:]):
             Plant["phenology_stage"] = "reproduction"
-            update_phenological_parameters(Plant)
-            return
-
-    # Switch to reproduction if sugar slope is negative
-    if sugar_slope < -1e-9:
-        if Plant["growth_type"] == "perennial":
-            Plant["phenology_stage"] = "making_reserve"
             update_phenological_parameters(Plant)
         return
     
-    # Photoperiod-based transitions
-    if sugar_slope < -1e-9:
-        if (sugar_slope < -1e-9 and Plant["growth_type"] == "perennial"
-              and Plant["phenology_stage"] != "dessication"):
-            Plant["phenology_stage"] = "dessication"
-            Plant["ratio_allocation"]["repro"] = 0.0
-            check_allocation(Plant)
-        return
+    if Plant["phenology_stage"] in ["reproduction"] and photoperiod_today > 14:
+        Plant["phenology_stage"] = "vegetative"
+        Plant["ratio_allocation"] = {"photo": 0.3, 
+                                     "support": 0.3, 
+                                     "absorp": 0.3, 
+                                     "repro": 0.0}
+        check_allocation(Plant)
+        update_phenological_parameters(Plant)
+        return   
+   
+    # optimize reserve build-up
+    if (photoperiod_today < photoperiod_yesterday and
+        Plant["phenology_stage"] == "vegetative"):
 
+        Plant["phenology_stage"] = "making_reserve"
+        update_phenological_parameters(Plant)
+        return
+    
+    if (sugar_slope < -1e-9 and
+        Plant["phenology_stage"] == "making_reserve"):
+        Plant["phenology_stage"] = "dessication"
+        update_phenological_parameters(Plant)
+        return
+    
     # End-of-life dessication
-    if Plant["biomass"]["photo"] < 0.001 and Plant["phenology_stage"] != "dormancy":
+    if Plant["biomass"]["photo"] < 0.001 and Plant["phenology_stage"] == "dessication":
         Plant["phenology_stage"] = "dormancy"
-        Plant["ratio_allocation"] = {"photo": 0.55, "support": 0.1, "absorp": 0.45, "repro": 0.0}
+        update_phenological_parameters(Plant)
+        Plant["ratio_allocation"] = {"photo": 0.3, "support": 0.2, "absorp": 0.3, "repro": 0.1}
         check_allocation(Plant)
 
 

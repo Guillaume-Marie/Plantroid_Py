@@ -14,7 +14,7 @@ import math
 Environment = {
     "soil": {
         "water": 0.0,
-        "nutrient": 600.0
+        "nutrient": 6000.0
     },
     "litter": {
         "necromass": 0.0,
@@ -33,7 +33,7 @@ Environment = {
     # Basic parameters for daily/seasonal cycles
     "day_temp_amplitude": 5.0,     # day/night temperature amplitude (°C)
     "seasonal_temp_offset": 10.0,  # seasonal temp offset (±10°C)
-    "base_temp": 10.0,             # average annual temperature (°C)
+    "base_temp": 15.0,             # average annual temperature (°C)
 
     "base_light": 1000.0,          # peak light in summer (W/m²)
     "seasonal_light_var": 0.5,     # fraction of light variation winter vs summer
@@ -41,7 +41,7 @@ Environment = {
     "precipitation_base": 1.9,     # mm of rain per day on average
     "seasonal_rain_var": 0.3,     # fraction for seasonal variation in rain
     "random_factor": 0.3,          # intensity of random weather factor (30%)
-    "soil_volume": 0.02            # volume of soil in m³
+    "soil_volume": 1.00            # volume of soil in m³
 }
 
 
