@@ -217,7 +217,8 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
 
     # (1,3) Compartiments vivants
     ax = day_axes[1, 3]
-    ax.plot(day_date_list, day_data["biomass_support"], label="Support", color="brown")
+    ax.plot(day_date_list, day_data["biomass_transport"], label="transport", color="brown")
+    ax.plot(day_date_list, day_data["biomass_stock"], label="stock", color="orange")
     ax.plot(day_date_list, day_data["biomass_photo"], label="Photo", color="green")
     ax.plot(day_date_list, day_data["biomass_absorp"], label="Absorp", color="blue")
     ax.plot(day_date_list, day_data["biomass_repro"], label="Repro", color="violet")
@@ -244,7 +245,7 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
 
     # (2,1) reserve_used
     ax = day_axes[3, 1]
-    ax.plot(day_date_list, day_data["reserve_used_maintenance"], label="Maint.", color="orange")
+    ax.plot(day_date_list, day_data["reserve_used_maintenance"], label="Maint.", color="orange", lw=5)
     ax.plot(day_date_list, day_data["reserve_used_extension"], label="Ext.", color="green")
     ax.plot(day_date_list, day_data["reserve_used_transpiration"], label="Transp.", color="blue")
     ax.set_xlabel("Date")
@@ -265,7 +266,8 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
 
     # (3,2) ratios d'allocation
     ax = day_axes[2, 3]
-    ax.plot(day_date_list, day_data["ratio_support"], label="support", color="brown")
+    ax.plot(day_date_list, day_data["ratio_transport"], label="transport", color="brown")
+    ax.plot(day_date_list, day_data["ratio_stock"], label="stock", color="orange")   
     ax.plot(day_date_list, day_data["ratio_photo"], label="photo", color="green")
     ax.plot(day_date_list, day_data["ratio_absorp"], label="absorp", color="blue")
     ax.plot(day_date_list, day_data["ratio_repro"], label="repro", color="violet")
@@ -369,13 +371,16 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
             for row in range(5):
                 for col in range(4):
                     axc = day_axes[row, col]
-                    axc.axvline(x_val, color='grey', linestyle='--', alpha=0.7)
+                    axc.axvline(x_val, color='grey', linestyle='--', alpha=0.3)
                     ymax = axc.get_ylim()[1]
-                    if row > 0 or col > 0:
-                        pass
+                    if row == 1 and col == 3:
+                        pass                        
+                        #axc.text(x_val, ymax * 0.2, new_stage, rotation=90,
+                        #color='grey', ha='right', va='bottom')
                     else :
-                        axc.text(x_val, ymax * 0.2, new_stage, rotation=90,
-                             color='grey', ha='right', va='bottom')
+                        pass
+                        #axc.text(x_val, ymax * 0.2, new_stage, rotation=90,
+                        #color='grey', ha='right', va='bottom')
 
     day_fig.autofmt_xdate(rotation=45)
     day_fig.tight_layout()
@@ -398,9 +403,9 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
     ax.set_title("Biomasse totale (nuit)")
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
 
-    # (0,1) support, photo, absorp
+    # (0,1) transport, photo, absorp
     ax = night_axes[0, 1]
-    ax.plot(night_date_list, night_data["biomass_support"], label="support", color="brown")
+    ax.plot(night_date_list, night_data["biomass_transport"], label="transport", color="brown")
     ax.plot(night_date_list, night_data["biomass_photo"], label="photo", color="green")
     ax.plot(night_date_list, night_data["biomass_absorp"], label="absorp", color="blue")
     ax.set_xlabel("Date")
@@ -563,9 +568,9 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
 
     # (6,1) adjusted_used_maintenance, extension, reproduction
 
-    # (6,2) ratio_support, ratio_photo, ratio_absorp, stress_sugar, stress_water
+    # (6,2) ratio_transport, ratio_photo, ratio_absorp, stress_sugar, stress_water
     ax = night_axes[6, 2]
-    ax.plot(night_date_list, night_data["ratio_support"], label="support", color="brown")
+    ax.plot(night_date_list, night_data["ratio_transport"], label="transport", color="brown")
     ax.plot(night_date_list, night_data["ratio_photo"], label="photo", color="green")
     ax.plot(night_date_list, night_data["ratio_absorp"], label="absorp", color="blue")
     ax.plot(night_date_list, night_data["stress_sugar"], label="stress_sugar", linestyle="--", color="orange")
@@ -603,7 +608,4 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
 
 
 if __name__ == "__main__":
-    # Example usage: 
-    # You can specify the real start date for day 1,
-    # e.g. 1 Jan 2025
-    simulate_and_plot("perennial herbaceous", start_date=datetime(2025, 1, 1))
+    simulate_and_plot("quercus_coccifera", start_date=datetime(2025, 1, 1))

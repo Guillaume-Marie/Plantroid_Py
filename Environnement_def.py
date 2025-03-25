@@ -14,7 +14,7 @@ import math
 Environment = {
     "soil": {
         "water": 0.0,
-        "nutrient": 6000.0
+        "nutrient": 60000.0
     },
     "litter": {
         "necromass": 0.0,
@@ -41,7 +41,7 @@ Environment = {
     "precipitation_base": 1.9,     # mm of rain per day on average
     "seasonal_rain_var": 0.3,     # fraction for seasonal variation in rain
     "random_factor": 0.3,          # intensity of random weather factor (30%)
-    "soil_volume": 1.00            # volume of soil in m³
+    "soil_volume": 10.00            # volume of soil in m³
 }
 
 
@@ -184,9 +184,9 @@ def environment_hazards(Plant, Env):
     wind_prob = 0.01
     if random.random() < wind_prob:
         damage_photo = 0.001 * Plant["slai"]
-        damage_support = 0.001 * ((100 - Plant["health_state"]) / 100.0)
+        damage_transport = 0.001 * ((100 - Plant["health_state"]) / 100.0)
         Fu.destroy_biomass(Plant, Env, "photo", damage_factor=damage_photo, process=None)
-        Fu.destroy_biomass(Plant, Env, "support", damage_factor=damage_support, process=None)
+        Fu.destroy_biomass(Plant, Env, "transport", damage_factor=damage_transport, process=None)
 
     # Insects or fungus
     insect_prob = 0.01

@@ -10,7 +10,8 @@ history = {
     "time": [],
     # Biomasses
     "biomass_total": [],
-    "biomass_support": [],
+    "biomass_transport": [],
+    "biomass_stock": [],    
     "biomass_photo": [],
     "biomass_absorp": [],
     "biomass_repro": [],
@@ -56,7 +57,8 @@ history = {
     "cost_extension_water": [],
     "cost_extension_nutrient": [],
     # Allocation ratios
-    "ratio_support": [],
+    "ratio_transport": [],
+    "ratio_stock": [],
     "ratio_photo": [],
     "ratio_absorp": [],
     "ratio_repro": [],
@@ -88,7 +90,8 @@ def history_update(Plant, history, Environment, time):
     # Biomasses
     history["biomass_total"].append(Plant["biomass_total"])
     history["phenology_stage"].append(Plant["phenology_stage"])
-    history["biomass_support"].append(Plant["biomass"]["support"])
+    history["biomass_transport"].append(Plant["biomass"]["transport"])
+    history["biomass_stock"].append(Plant["biomass"]["stock"])   
     history["biomass_photo"].append(Plant["biomass"]["photo"])
     history["biomass_absorp"].append(Plant["biomass"]["absorp"])
     history["biomass_repro"].append(Plant["biomass"]["repro"])
@@ -144,7 +147,8 @@ def history_update(Plant, history, Environment, time):
     history["cost_extension_nutrient"].append(Plant["cost"]["extension"]["nutrient"])
 
     # Allocation ratios
-    history["ratio_support"].append(Plant["ratio_allocation"]["support"])
+    history["ratio_transport"].append(Plant["ratio_allocation"]["transport"])
+    history["ratio_stock"].append(Plant["ratio_allocation"]["stock"])    
     history["ratio_photo"].append(Plant["ratio_allocation"]["photo"])
     history["ratio_absorp"].append(Plant["ratio_allocation"]["absorp"])
     history["ratio_repro"].append(Plant["ratio_allocation"]["repro"])

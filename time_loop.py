@@ -96,19 +96,25 @@ def run_simulation_collect_data(max_cycles):
             # If stomatal conductance was low in the previous day, adapt water strategy
             last_24_stomatal = Hi.history["stomatal_conductance"][-24:]
             if len(last_24_stomatal) == 24:
-                if np.mean(last_24_stomatal) < 0.9:
+                if np.mean(last_24_stomatal) < 0.7:
                     Fu.adapt_water_supply(Pl.Plant, Ev.Environment)
             nutrient_slope = Fu.slope_last_hours(Hi.history["reserve_nutrient"], nb_hours=24 * 3)
             #print(nutrient_slope)
             if nutrient_slope < -1e-9:
-                Fu.adapt_nutrient_supply(Pl.Plant)
+                Fu.adapt_nutrient_supply(Pl.Plant,"bad")
+            else:
+                Fu.adapt_nutrient_supply(Pl.Plant,"good")
+            if Pl.Plant["phenology_stage"] == "vegetative": 
+                Fu.adapt_stock_supply(Pl.Plant)
 
             # Reset stomatal conductance and leaf angle each day
             Pl.Plant["stomatal_conductance"] = 1.0
             Pl.Plant["leaf_angle"] = 0.0
 
             # Manage plant phenology (e.g. germination, dormancy, reproduction)
-            Fu.manage_phenology(Pl.Plant, Ev.Environment, day_index, daily_min_temps)
+            Fu.manage_phenology(Pl.Plant, Ev.Environment, 
+                                day_index, 
+                                daily_min_temps)
             previous_day_index = day_index
 
         # If still in seed stage, skip photosynthesis and store zeros for diagnostics
@@ -155,10 +161,11 @@ def run_simulation_collect_data(max_cycles):
         # Continue with extension / reproduction only if there's enough light
         if Ev.Environment["atmos"]["light"] > 10.0:
             Fu.calculate_potential_new_biomass(Pl.Plant)
-            if Pl.Plant["phenology_stage"] == "reproduction":
-                print("new biomass : ",Pl.Plant["new_biomass"])
+            #if Pl.Plant["phenology_stage"] == "reproduction":
+                #print("new biomass : ",Pl.Plant["new_biomass"])
             # Calculate extension and reproduction costs
             Fu.calculate_cost(Pl.Plant, "extension")
+            Fu.calculate_cost(Pl.Plant, "secondary")   
 
             # If in reproduction stage
             if Pl.Plant["phenology_stage"] == "reproduction":
@@ -173,11 +180,16 @@ def run_simulation_collect_data(max_cycles):
                 Pl.Plant["phenology_stage"] == "reproduction"):
                 Fu.handle_process(Pl.Plant, Ev.Environment, "extension")
                 Fu.update_success_history(Pl.Plant, "extension")
+            
+            if (Pl.Plant["phenology_stage"] == "making_reserve" and 
+                Pl.Plant["growth_type"] == "perennial"):
+                Fu.handle_process(Pl.Plant, Ev.Environment, "secondary")
 
             # Finally, transfer any remaining flux_in to internal reserves
             Fu.refill_reserve(Pl.Plant, "sugar")
             Fu.refill_reserve(Pl.Plant, "nutrient")
 
+        Fu.destroy_biomass(Pl.Plant, Ev.Environment, "necromass", Pl.Plant["transport_turnover"]/10)
         # Check for negative pools or fluxes, stop if it occurs
         stop_now = Fu.check_for_negatives(Pl.Plant, Ev.Environment, sim_time)
         if stop_now:

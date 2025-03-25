@@ -49,7 +49,8 @@ def check_for_negatives(Plant, Env, time):
             print(f"  - biomasse totale: {Plant['biomass_total']:.8f}")
             print(f"  - photo: {Plant['biomass']['photo']:.8f}")
             print(f"  - absorp: {Plant['biomass']['absorp']:.8f}")
-            print(f"  - support: {Plant['biomass']['support']:.8f}")
+            print(f"  - transport: {Plant['biomass']['transport']:.8f}")
+            print(f"  - stock: {Plant['biomass']['stock']:.8f}")            
             print(f"  - repro: {Plant['biomass']['repro']:.8f}")
             print(f"  - flux_in sugar: {Plant['flux_in']['sugar']:.8f}")
             print(f"  - flux_in water: {Plant['flux_in']['water']:.8f}")
@@ -73,7 +74,8 @@ def check_for_negatives(Plant, Env, time):
             print(f"  - biomass total: {Plant['biomass_total']:.8f}")
             print(f"  - photo: {Plant['biomass']['photo']:.8f}")
             print(f"  - absorp: {Plant['biomass']['absorp']:.8f}")
-            print(f"  - support: {Plant['biomass']['support']:.8f}")
+            print(f"  - transport: {Plant['biomass']['transport']:.8f}")
+            print(f"  - stock: {Plant['biomass']['stock']:.8f}")            
             print(f"  - repro: {Plant['biomass']['repro']:.8f}")
             print(f"  - flux_in sugar: {Plant['flux_in']['sugar']:.8f}")
             print(f"  - flux_in water: {Plant['flux_in']['water']:.8f}")
@@ -121,7 +123,7 @@ def destroy_biomass(Plant, Env, which_biomass, damage_factor=None):
     Plant : dict
     Env : dict
     which_biomass : str
-        A key in Plant["biomass"] (e.g. "photo", "support", "absorp", "necromass")
+        A key in Plant["biomass"] (e.g. "photo", "transport", "absorp", "necromass")
     damage_factor : float
         Fraction of biomass to destroy. If None, defaults to Gl.delta_adapt.
     """
@@ -131,12 +133,14 @@ def destroy_biomass(Plant, Env, which_biomass, damage_factor=None):
 
     lost = Plant["biomass"][which_biomass] * damage_factor
     Plant["biomass"][which_biomass] -= lost
-    Plant["reserve"]["water"] -= lost
 
     if which_biomass in ["necromass", "repro"]:
         Env["litter"]["necromass"] += lost
     else:
         Plant["biomass"]["necromass"] += lost
+        Plant["reserve"]["water"] -= lost 
+        Plant["reserve"]["sugar"] += lost * Plant["cannibal_ratio"]
+        Plant["reserve"]["nutrient"] += lost * Plant["cannibal_ratio"]
 
     # Potential partial re-translocation (not fully implemented here).
     # For example, if "nutrient" or "water" is recovered, you could adjust Plant["reserve"] or Env.
@@ -166,7 +170,7 @@ def ensure_maintenance_sugar(Plant, Env):
 
     # Otherwise, destroy biomass to recover sugar
     # priority for cannibalization
-    compartments_order = ["photo", "absorp", "support"]  
+    compartments_order = ["transport", "absorp","stock","photo"]  
     mass_to_destroy = shortfall / Plant["cannibal_ratio"]
 
     for comp in compartments_order:
@@ -209,14 +213,18 @@ def refill_reserve(Plant, rsc):
     """
     if rsc == "water" and Plant["reserve"][rsc] >= Plant["biomass_total"]:
         return
+    
+    if rsc == "sugar" and Plant["reserve"][rsc] >= (Plant["biomass"]["stock"]*10):
+        return   
 
     if Plant["flux_in"][rsc] >= 0.0:
         usable_in = Plant["flux_in"][rsc] * Gl.delta_adapt
         Plant["flux_in"][rsc] -= usable_in
         Plant["reserve"][rsc] += usable_in
     else:
-        print("Error in refill_reserve: flux_in is negative for", 
-              rsc, Plant["flux_in"][rsc])
+        pass
+        #print("Error in refill_reserve: flux_in is negative for", 
+        #      rsc, Plant["flux_in"][rsc])
 
 
 ###############################################
@@ -439,11 +447,11 @@ def compute_cell_water_draw(Plant):
 def compute_max_transpiration_capacity(Plant, Env):
     """
     Calculates the plant's maximum transpiration capacity (in g of water per cycle),
-    determined by stomatal, support transport, and soil water availability.
+    determined by stomatal, transport transport, and soil water availability.
 
     The limiting pool sets the maximum possible transpiration:
     - photo : limited by stomatal conduction
-    - support : limited by transport capacity
+    - transport : limited by transport capacity
     - soil : limited by available water in the soil
 
     The result is stored in Plant["max_transpiration_capacity"] and
@@ -452,20 +460,20 @@ def compute_max_transpiration_capacity(Plant, Env):
     gs = compute_stomatal_conductance_max(Plant) * Plant["stomatal_conductance"]
     photo_capacity = gs * Gl.D_H2O * Gl.VPD * Gl.DT
 
-    support_capacity = (
-        Plant["biomass"]["support"] * Plant["support_transport_coeff"] * Gl.DT
+    transport_capacity = (
+        Plant["biomass"]["transport"] * Plant["transport_coeff"] * Gl.DT
     )
     
     soil_capacity = compute_available_water(Plant, Env)  
 
     capacities = {
         "photo": photo_capacity,
-        "support": support_capacity,
+        "transport": transport_capacity,
         "soil": soil_capacity
     }
     min_capacity = min(capacities.values())
     limiting_pool = min(capacities, key=capacities.get)
-
+    #print(limiting_pool)
     Plant["max_transpiration_capacity"] = min_capacity
     Plant["transp_limit_pool"] = limiting_pool
 
@@ -486,6 +494,10 @@ def post_process_success(Plant, Env, process):
         allocate_biomass(Plant, Plant["new_biomass"])
         pay_cost(Plant, Env, process)
         restore_health(Plant)
+    elif process == "secondary":
+        if Plant["reserve"]["sugar"] >= (Plant["biomass"]["stock"]*10):
+            allocate_biomass(Plant, Plant["new_biomass"])
+            pay_cost(Plant, Env, process)  
 
 def post_process_resist(Plant, Env, process):
     """
@@ -532,7 +544,11 @@ def handle_process(Plant, Env, process):
         post_process_success(Plant, Env, process)
         return
 
-    draw_from_reserves(Plant, process)
+    if process != "secondary":
+        draw_from_reserves(Plant, process)
+    else:
+        return
+
     if resources_available(Plant, process):
         update_stress_history(Plant, process)
         post_process_resist(Plant, Env, process)
@@ -548,18 +564,14 @@ def calculate_potential_new_biomass(Plant):
     """
     r_max = Plant["r_max"]
     alpha = Plant["alpha"]
-    max_growth = Plant["biomass_total"] * (r_max / (1.0 + alpha * Plant["biomass_total"]))
+    biomass_support = Plant["biomass"]["stock"] + Plant["biomass"]["transport"]
+    max_growth = biomass_support * (r_max / (1.0 + alpha * biomass_support ))
     limiting_bio = max_growth
-    #if Plant["phenology_stage"] == "reproduction":
-    #    print("max :",max_growth)
-    #    print("sugar:",Plant["flux_in"]["sugar"])
-    #    print("water:",Plant["flux_in"]["water"])
-    #    print("nutrient:",Plant["flux_in"]["nutrient"])
 
     for r in Gl.resource:
         max_bio = 0.0
         for bf in Gl.biomass_function:
-            denom = Plant["cost_params"]["extension"][bf][r]
+            denom = Plant["cost_params"][bf][r]
             r_avail = ((Plant["flux_in"][r] + 
                        (Plant["reserve_ratio"] * 
                        Plant["reserve"][r])) *
@@ -575,11 +587,12 @@ def resources_available(Plant, process):
     """
     Checks if flux_in is sufficient to cover the cost for a given process.
     """
-    return (
-        Plant["flux_in"]["sugar"] >= Plant["cost"][process]["sugar"]
-        and Plant["flux_in"]["nutrient"] >= Plant["cost"][process]["nutrient"]
-        and Plant["flux_in"]["water"] >= Plant["cost"][process]["water"]
-    )
+    if (Plant["flux_in"]["sugar"] >= Plant["cost"][process]["sugar"] and
+        Plant["flux_in"]["nutrient"] >= Plant["cost"][process]["nutrient"] and
+        Plant["flux_in"]["water"] >= Plant["cost"][process]["water"]):
+        return True
+    else:
+        return False
 
 
 def pay_cost(Plant, Env, process):
@@ -587,11 +600,11 @@ def pay_cost(Plant, Env, process):
     Deducts the process cost from the flux_in, or sugar 
     alone in case of maintenance.
     """
-    if process == "extension":
+    if process != "maintenance":
         Plant["flux_in"]["sugar"] -= Plant["cost"][process]["sugar"]
         Plant["flux_in"]["nutrient"] -= Plant["cost"][process]["nutrient"]
         Plant["flux_in"]["water"] -= Plant["cost"][process]["water"]
-    elif process == "maintenance":
+    else:
         Plant["flux_in"]["sugar"] -= Plant["cost"][process]["sugar"]
 
 
@@ -606,21 +619,28 @@ def calculate_cost(Plant, process):
     """
     if process == "maintenance":
         if Plant["phenology_stage"] != "dormancy":
-            cost_factor = Plant["cost_params"][process]["unique"]["sugar"]
+            cost_factor = Plant["cost_params"]["maintenance"]["sugar"]
         else:
-            cost_factor = Plant["cost_params"][process]["unique"]["sugar"]/4
+            cost_factor = Plant["cost_params"]["maintenance"]["sugar"]/4
 
-        Plant["cost"][process]["sugar"] = (cost_factor * 
-                                           Gl.DT * 
-                                           Plant["biomass_total"])
+        Plant["cost"]["maintenance"]["sugar"] = (cost_factor * 
+                                Gl.DT * Plant["biomass_total"])
+    elif process == "secondary":
+        for r in Gl.resource:
+            for bf in Gl.biomass_function:
+                cost_factor = Plant["cost_params"][bf][r]
+                Plant["cost"][process][r] += (cost_factor * 
+                                    Plant["stock_growth_rate"]*
+                                    Plant["new_biomass"] *
+                                    Plant["ratio_allocation"][bf])   
     else:  # extension
     # Recompute cost with updated new_biomass
         for r in Gl.resource:
             for bf in Gl.biomass_function:
-                cost_factor = Plant["cost_params"]["extension"][bf][r]
-                Plant["cost"]["extension"][r] += (cost_factor * 
-                                                Plant["new_biomass"] *
-                                                Plant["ratio_allocation"][bf])
+                cost_factor = Plant["cost_params"][bf][r]
+                Plant["cost"][process][r] += (cost_factor * 
+                                    Plant["new_biomass"] *
+                                    Plant["ratio_allocation"][bf])
 
 def draw_from_reserves(Plant, process):
     """
@@ -708,49 +728,49 @@ def adapt_leaf_structure(Plant, Env):
         Plant["slai"] = min(1.0, Plant["slai"] + Gl.delta_adapt)
 
 
-def adapt_leaf_nutrient(Plant):
+def adapt_leaf_nutrient(Plant, cond):
     """
     Simplified approach to adapt the plant's nutrient index and cost parameters
     if it experiences nutrient stress.
     """
-    Plant["nutrient_index"] = max(0.1, Plant["nutrient_index"] - Gl.delta_adapt)
-    Plant["cost_params"]["extension"]["photo"]["nutrient"] = max(
-        0.001,
-        Plant["cost_params"]["extension"]["photo"]["nutrient"] - Gl.delta_adapt
-    )
-    Plant["cost_params"]["extension"]["absorp"]["nutrient"] = max(
-        0.001,
-        Plant["cost_params"]["extension"]["absorp"]["nutrient"] - Gl.delta_adapt
-    )
-    Plant["cost_params"]["extension"]["support"]["nutrient"] = max(
-        0.001,
-        Plant["cost_params"]["extension"]["support"]["nutrient"] - Gl.delta_adapt
-    )
-
+    if cond == 'bad':
+        Plant["nutrient_index"] = max(0.1, Plant["nutrient_index"] - Gl.delta_adapt)
+        #Plant["cost_params"]["photo"]["nutrient"] = max(0.001,
+        #    Plant["cost_params"]["photo"]["nutrient"] - Gl.delta_adapt)
+        #Plant["cost_params"]["absorp"]["nutrient"] = max(0.001,
+        #    Plant["cost_params"]["absorp"]["nutrient"] - Gl.delta_adapt)
+        #Plant["cost_params"]["transport"]["nutrient"] = max(0.001,
+        #    Plant["cost_params"]["transport"]["nutrient"] - Gl.delta_adapt)
+    elif cond == 'good':
+        Plant["nutrient_index"] = min(1.0, Plant["nutrient_index"] + Gl.delta_adapt)
+        #Plant["cost_params"]["photo"]["nutrient"] = max(0.02,
+        #    Plant["cost_params"]["photo"]["nutrient"] + Gl.delta_adapt)
+        #Plant["cost_params"]["absorp"]["nutrient"] = max(0.02,
+        #    Plant["cost_params"]["absorp"]["nutrient"] + Gl.delta_adapt)
+        #Plant["cost_params"]["transport"]["nutrient"] = max(0.01,
+        #    Plant["cost_params"]["transport"]["nutrient"] + Gl.delta_adapt)
 
 def adapt_water_supply(Plant, Env):
     """
     Reallocates biomass investment in case of chronic water stress.
-    Shifts ratio_allocation to favor root or support, etc.
+    Shifts ratio_allocation to favor root or transport, etc.
     """
     if Plant["transp_limit_pool"] == "soil":
         # More root allocation
         if Plant["ratio_allocation"]["absorp"] <= 0.8:
-            Plant["ratio_allocation"]["support"] = max(Plant["ratio_allocation"]["support"] - Gl.delta_adapt / 2, 0.0)
             Plant["ratio_allocation"]["absorp"] += Gl.delta_adapt
-            Plant["ratio_allocation"]["photo"] = max(Plant["ratio_allocation"]["photo"] - Gl.delta_adapt / 2, 0.0)
+            Plant["ratio_allocation"]["photo"] = max(Plant["ratio_allocation"]["photo"] - Gl.delta_adapt, 0.0)
 
-    elif Plant["transp_limit_pool"] == "support":
-        if Plant["ratio_allocation"]["support"] <= 0.8:
-            Plant["ratio_allocation"]["support"] += Gl.delta_adapt
+    elif Plant["transp_limit_pool"] == "transport":
+        if Plant["ratio_allocation"]["transport"] <= 0.8:
+            Plant["ratio_allocation"]["transport"] += Gl.delta_adapt
             Plant["ratio_allocation"]["absorp"] = max(Plant["ratio_allocation"]["absorp"] - Gl.delta_adapt / 2, 0.0)
             Plant["ratio_allocation"]["photo"] = max(Plant["ratio_allocation"]["photo"] - Gl.delta_adapt / 2, 0.0)
 
     elif Plant["transp_limit_pool"] == "photo":
         if Plant["ratio_allocation"]["photo"] <= 0.8:
-            Plant["ratio_allocation"]["support"] = max(Plant["ratio_allocation"]["support"] - Gl.delta_adapt / 2, 0.0)
             Plant["ratio_allocation"]["photo"] += Gl.delta_adapt
-            Plant["ratio_allocation"]["absorp"] = max(Plant["ratio_allocation"]["absorp"] - Gl.delta_adapt / 2, 0.0)
+            Plant["ratio_allocation"]["absorp"] = max(Plant["ratio_allocation"]["absorp"] - Gl.delta_adapt, 0.0)
         adapt_leaf_structure(Plant, Env)
 
     check_allocation(Plant)
@@ -763,54 +783,64 @@ def adapt_for_reproduction(Plant):
     """
     if Plant["ratio_allocation"]["repro"] <= Plant["alloc_repro_max"]:
         change = Plant["alloc_change_rate"]
-        Plant["ratio_allocation"]["support"] = max(Plant["ratio_allocation"]["support"] - change / 3, 0.0)
-        Plant["ratio_allocation"]["photo"] = max(Plant["ratio_allocation"]["photo"] - change / 3, 0.0)
-        Plant["ratio_allocation"]["absorp"] = max(Plant["ratio_allocation"]["absorp"] - change / 3, 0.0)
+        Plant["ratio_allocation"]["transport"] = max(Plant["ratio_allocation"]["transport"] - change / 4, 0.0)
+        Plant["ratio_allocation"]["stock"] = max(Plant["ratio_allocation"]["stock"] - change / 4, 0.0)
+        Plant["ratio_allocation"]["photo"] = max(Plant["ratio_allocation"]["photo"] - change / 4, 0.0)
+        Plant["ratio_allocation"]["absorp"] = max(Plant["ratio_allocation"]["absorp"] - change / 4, 0.0)
         Plant["ratio_allocation"]["repro"] += change
     check_allocation(Plant)
 
 
-def adapt_nutrient_supply(Plant):
+def adapt_nutrient_supply(Plant, cond):
     """
     Reallocation to root compartments in case of nutrient stress, plus adjusting leaf nutrient index.
     """
-    if Plant["ratio_allocation"]["absorp"] <= 0.8:
-        Plant["ratio_allocation"]["support"] = max(Plant["ratio_allocation"]["support"] - Gl.delta_adapt / 2, 0.0)
-        Plant["ratio_allocation"]["absorp"] += Gl.delta_adapt
-        Plant["ratio_allocation"]["photo"] = max(Plant["ratio_allocation"]["photo"] - Gl.delta_adapt / 2, 0.0)
-        adapt_leaf_nutrient(Plant)
-    check_allocation(Plant)
+    if cond == 'bad':
+        if Plant["ratio_allocation"]["absorp"] <= 0.8:
+            Plant["ratio_allocation"]["absorp"] += Gl.delta_adapt
+            Plant["ratio_allocation"]["photo"] = max(Plant["ratio_allocation"]["photo"] - Gl.delta_adapt, 0.0)
+            check_allocation(Plant)
+    adapt_leaf_nutrient(Plant, cond)
+
+def adapt_stock_supply(Plant):
+    """
+    Reallocation to root compartments in case of nutrient stress, plus adjusting leaf nutrient index.
+    """
+    if Plant["ratio_allocation"]["stock"] > 0.0:
+        Plant["ratio_allocation"]["stock"] -= Gl.delta_adapt
+        check_allocation(Plant)
 
 
 def dessication(Plant, Env, day):
     """
     If the plant enters dessication stage, biomass in certain compartments is destroyed
-    (especially for annual or biannual). Perennials might only lose partial support.
+    (especially for annual or biannual). Perennials might only lose partial transport.
     """
     if Plant["growth_type"] == "annual":
-        destroy_biomass(Plant, Env, "support", Plant["dessication_rate"])
+        destroy_biomass(Plant, Env, "transport", Plant["dessication_rate"])
         destroy_biomass(Plant, Env, "absorp", Plant["dessication_rate"])
         destroy_biomass(Plant, Env, "photo", Plant["dessication_rate"])
     elif Plant["growth_type"] == "perennial":
-        destroy_biomass(Plant, Env, "support", Plant["support_turnover"])
+        destroy_biomass(Plant, Env, "transport", Plant["transport_turnover"])
         destroy_biomass(Plant, Env, "absorp", Plant["dessication_rate"])
         destroy_biomass(Plant, Env, "photo", Plant["dessication_rate"])
     elif Plant["growth_type"] == "biannual" and day < 365:
         destroy_biomass(Plant, Env, "photo", Plant["dessication_rate"])
         destroy_biomass(Plant, Env, "absorp", Plant["dessication_rate"])        
-        destroy_biomass(Plant, Env, "support", Plant["support_turnover"])
+        destroy_biomass(Plant, Env, "transport", Plant["transport_turnover"])
     elif Plant["growth_type"] == "biannual" and day > 365:
         destroy_biomass(Plant, Env, "photo", Plant["dessication_rate"])   
         destroy_biomass(Plant, Env, "absorp", Plant["dessication_rate"])
-        destroy_biomass(Plant, Env, "support", Plant["dessication_rate"])
+        destroy_biomass(Plant, Env, "transport", Plant["dessication_rate"])
 
 def update_biomass_total(Plant):
     """
-    Recalculates the total living biomass (sum of support, photo, absorp).
+    Recalculates the total living biomass (sum of transport, photo, absorp).
     necromass is not included in biomass_total.
     """
     Plant["biomass_total"] = (
-        Plant["biomass"]["support"] +
+        Plant["biomass"]["transport"] +
+        Plant["biomass"]["stock"] +
         Plant["biomass"]["photo"] +
         Plant["biomass"]["absorp"]
     )
@@ -818,7 +848,7 @@ def update_biomass_total(Plant):
 
 def allocate_biomass(Plant, nb):
     """
-    Distributes 'nb' (new biomass) among support, photo, 
+    Distributes 'nb' (new biomass) among transport, photo, 
     absorp, and repro compartments
     according to ratio_allocation.
 
@@ -829,12 +859,14 @@ def allocate_biomass(Plant, nb):
         Additional biomass to allocate.
     """
     ra = Plant["ratio_allocation"]
-    add_support = nb * ra["support"]
+    add_transport = nb * ra["transport"]
+    add_stock = nb * ra["stock"]    
     add_photo = nb * ra["photo"]
     add_absorp = nb * ra["absorp"]
     add_repro = nb * ra["repro"]
 
-    Plant["biomass"]["support"] += add_support
+    Plant["biomass"]["transport"] += add_transport
+    Plant["biomass"]["stock"] += add_stock
     Plant["biomass"]["photo"] += add_photo
     Plant["biomass"]["absorp"] += add_absorp
     Plant["biomass"]["repro"] += add_repro
@@ -922,7 +954,8 @@ def phenology_biannual(Plant, Env, day_index, daily_min_temps):
         Plant["phenology_stage"] = "dormancy"
         update_phenological_parameters(Plant)
         Plant["ratio_allocation"] = {"photo": 0.2, 
-                                     "support": 0.2, 
+                                     "transport": 0.1, 
+                                     "stock": 0.0,
                                      "absorp": 0.2, 
                                      "repro": Plant["alloc_repro_max"]}
         check_allocation(Plant)
@@ -930,7 +963,14 @@ def phenology_biannual(Plant, Env, day_index, daily_min_temps):
 def phenology_perennial(Plant, Env, day_index, daily_min_temps):
     photoperiod_today = Ev.calc_daily_photoperiod(day_index)
     photoperiod_yesterday = Ev.calc_daily_photoperiod(day_index - 1)
-    sugar_slope = slope_last_hours(Hi.history["reserve_sugar"], nb_hours=24 * 4)
+    Gl.count_ph += 1
+    if Plant["phenology_stage"] == "making_reserve" and  Gl.count_ph > 24 * 4:
+        cost = np.array(Hi.history.get("cost_maintenance_sugar"))
+        photo = np.array(Hi.history.get("actual_sugar"))
+        delta = cost-photo
+        sugar_mean = np.mean(delta[-24 * 4:])                                
+    else:
+        sugar_mean = 0.0
     photo_slope = slope_last_hours(Hi.history["pot_sugar"], nb_hours=24 * 4)
 
     # Germination check
@@ -948,10 +988,7 @@ def phenology_perennial(Plant, Env, day_index, daily_min_temps):
     
     if Plant["phenology_stage"] in ["reproduction"] and photoperiod_today > 14:
         Plant["phenology_stage"] = "vegetative"
-        Plant["ratio_allocation"] = {"photo": 0.3, 
-                                     "support": 0.3, 
-                                     "absorp": 0.3, 
-                                     "repro": 0.0}
+        Plant["ratio_allocation"] = Plant["save_allocation"]
         check_allocation(Plant)
         update_phenological_parameters(Plant)
         return   
@@ -961,10 +998,18 @@ def phenology_perennial(Plant, Env, day_index, daily_min_temps):
         Plant["phenology_stage"] == "vegetative"):
 
         Plant["phenology_stage"] = "making_reserve"
+        Plant["save_allocation"] = Plant["ratio_allocation"]
+        Plant["ratio_allocation"] = {"photo": 0.0, 
+                                     "transport": 0.0,
+                                     "stock": 1.0, 
+                                     "absorp": 0.0, 
+                                     "repro": 0.0}        
+        check_allocation(Plant)
         update_phenological_parameters(Plant)
+        Gl.count_ph = 0
         return
     
-    if (sugar_slope < -1e-9 and
+    if (sugar_mean < -1e-9 and
         Plant["phenology_stage"] == "making_reserve"):
         Plant["phenology_stage"] = "dessication"
         update_phenological_parameters(Plant)
@@ -974,7 +1019,11 @@ def phenology_perennial(Plant, Env, day_index, daily_min_temps):
     if Plant["biomass"]["photo"] < 0.001 and Plant["phenology_stage"] == "dessication":
         Plant["phenology_stage"] = "dormancy"
         update_phenological_parameters(Plant)
-        Plant["ratio_allocation"] = {"photo": 0.3, "support": 0.2, "absorp": 0.3, "repro": 0.1}
+        Plant["ratio_allocation"] = {"photo": 0.3, 
+                                     "transport": 0.0,
+                                     "stock": 0.0,  
+                                     "absorp": 0.3, 
+                                     "repro": 0.1}
         check_allocation(Plant)
 
 
@@ -1020,6 +1069,7 @@ def intitialize_state_variables(Plant):
     Plant["cost"] = {
         "extension": {"sugar": 0.0, "water": 0.0, "nutrient": 0.0},
         "maintenance": {"sugar": 0.0, "water": 0.0, "nutrient": 0.0},
+        "secondary": {"sugar": 0.0, "water": 0.0, "nutrient": 0.0},        
         "transpiration": {"sugar": 0.0, "water": 0.0, "nutrient": 0.0}
     }
     Plant["flux_in"] = {"sugar": 0.0, "water": 0.0, "nutrient": 0.0}
@@ -1036,9 +1086,10 @@ def check_allocation(Plant):
     Plant : dict
     """
     ra = Plant["ratio_allocation"]
-    sumalloc = ra["support"] + ra["photo"] + ra["absorp"] + ra["repro"]
+    sumalloc = ra["transport"] + ra["photo"] + ra["absorp"] + ra["repro"]+ ra["stock"]
     if sumalloc != 1.0 and sumalloc != 0.0:
-        ra["support"] /= sumalloc
+        ra["transport"] /= sumalloc
+        ra["stock"] /= sumalloc
         ra["photo"] /= sumalloc
         ra["absorp"] /= sumalloc
         ra["repro"] /= sumalloc
