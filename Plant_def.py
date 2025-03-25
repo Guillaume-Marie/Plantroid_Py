@@ -321,13 +321,13 @@ species_db = {
         "T_optim": 25.0,
         "temp_photo_sensitivity": 0.03,    # (°C⁻¹) Sensibilité (linéaire) de la photosynthèse à l’écart de T_optim.
         "r_max": 8.28e-3,
-        "alpha": 8.13e-2,
+        "alpha": 4.13e-2,
         "sla_max": 0.01,                   # (m²/gleaf) Surface foliaire spécifique maximale.
         "leaf_size": 0.05,                 # (m) Dimension caractéristique d’une feuille (pour les calculs de r_a).
         "leaf_albedo": 0.25,               # (fraction) Albédo foliaire (fraction réfléchie).
         "leaf_emissivity": 0.95,           # (fraction) Émissivité dans l’IR.
         "watt_to_sugar_coeff": 5.3e-5,     # (conversion J/s -> gC6H12O6/s) Efficacité de conversion lumière→sucres.
-        "transport_coeff": 2e-2,           # (g/s/MPa)/gtransport ; capacité de transport (sève, rigidité tige).
+        "transport_coeff": 4e-2,           # (g/s/MPa)/gtransport ; capacité de transport (sève, rigidité tige).
         "soil_supply_coeff": 0.1,          # (adimensionnel) Efficacité générale d’extraction de ressources du sol.
         "water_nutrient_coeff": 8.5e-3,    # (adimensionnel) Taux de nutriments absorbés par g d’eau transpiré.
         "stomatal_density": 5e7,           # (stomates/m²) Densité moyenne de stomates (ordre de 10⁷–10⁸).
