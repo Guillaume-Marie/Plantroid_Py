@@ -21,7 +21,7 @@ import matplotlib.dates as mdates
 def aggregate_day_night(history, threshold_light=1.0):
     """
     Aggregates the simulation history into two sets of daily data: day vs night.
-    If history["time"] stores hours (0..N), we compute total_days = (max_time//24)+1.
+    If history["time"] stores hours (0..N), we compute total_days = (max_time//Gl.ave_day)+1.
     Each day's daytime data is averaged over hours with atmos_light > threshold_light,
     while nighttime data is for hours below that threshold.
 
@@ -50,7 +50,7 @@ def aggregate_day_night(history, threshold_light=1.0):
 
     # If "time" is in hours, we figure out how many days we have
     max_time = max(history["time"])
-    total_days = (max_time // 24) + 1
+    total_days = (max_time // Gl.ave_day) + 1
 
     # Prepare lists
     for key in history:
@@ -69,7 +69,7 @@ def aggregate_day_night(history, threshold_light=1.0):
 
     for i in range(total_points):
         hour = history["time"][i]  # e.g. 0.., in hours
-        day_index = hour // 24
+        day_index = hour // Gl.ave_day
         atm_light = history["atmos_light"][i]
         is_day = (atm_light > threshold_light)
 
@@ -374,13 +374,13 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
                     axc.axvline(x_val, color='grey', linestyle='--', alpha=0.3)
                     ymax = axc.get_ylim()[1]
                     if row == 1 and col == 3:
-                        pass                        
-                        #axc.text(x_val, ymax * 0.2, new_stage, rotation=90,
-                        #color='grey', ha='right', va='bottom')
+                        #pass                        
+                        axc.text(x_val, ymax * 0.2, new_stage, rotation=90,
+                        color='grey', ha='right', va='bottom')
                     else :
-                        pass
-                        #axc.text(x_val, ymax * 0.2, new_stage, rotation=90,
-                        #color='grey', ha='right', va='bottom')
+                        #pass
+                        axc.text(x_val, ymax * 0.2, new_stage, rotation=90,
+                        color='grey', ha='right', va='bottom')
 
     day_fig.autofmt_xdate(rotation=45)
     day_fig.tight_layout()

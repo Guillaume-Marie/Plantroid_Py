@@ -56,7 +56,7 @@ history = {
     "cost_extension_sugar": [],
     "cost_extension_water": [],
     "cost_extension_nutrient": [],
-    # Allocation ratios
+    # alloc ratios
     "ratio_transport": [],
     "ratio_stock": [],
     "ratio_photo": [],
@@ -146,12 +146,12 @@ def history_update(Plant, history, Environment, time):
     history["cost_extension_water"].append(Plant["cost"]["extension"]["water"])
     history["cost_extension_nutrient"].append(Plant["cost"]["extension"]["nutrient"])
 
-    # Allocation ratios
-    history["ratio_transport"].append(Plant["ratio_allocation"]["transport"])
-    history["ratio_stock"].append(Plant["ratio_allocation"]["stock"])    
-    history["ratio_photo"].append(Plant["ratio_allocation"]["photo"])
-    history["ratio_absorp"].append(Plant["ratio_allocation"]["absorp"])
-    history["ratio_repro"].append(Plant["ratio_allocation"]["repro"])
+    # alloc ratios
+    history["ratio_transport"].append(Plant["ratio_alloc"]["transport"])
+    history["ratio_stock"].append(Plant["ratio_alloc"]["stock"])    
+    history["ratio_photo"].append(Plant["ratio_alloc"]["photo"])
+    history["ratio_absorp"].append(Plant["ratio_alloc"]["absorp"])
+    history["ratio_repro"].append(Plant["ratio_alloc"]["repro"])
 
     # Stress
     if Plant["stress_history"]["sugar"]:

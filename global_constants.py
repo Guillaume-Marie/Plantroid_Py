@@ -12,12 +12,15 @@ names remain in French for compatibility with other parts of the project.
 
 # Basic global time parameters
 time = 0                # discrete simulation time (in hours)
-max_cycles = 24 * 365 * 20  # default maximum cycles if needed
+max_cycles = 24 * 365 * 10  # default maximum cycles if needed
 DT = 3600               # time step in seconds (1 hour)
 count_ph = 0
+ave_day = 24
+ave_week = 7
+nb_days = 4
+slope_thrs = -1e-9
 # Rate of adaptation for certain parameters in the model
 delta_adapt = 0.0000015 * DT
-N = 24                  # typical window size for certain rolling calculations
 
 # Water diffusion coefficient (simplified)
 D_H2O = 2.5e-5          # m²/s
@@ -27,6 +30,7 @@ VPD = 11.2
 
 # Characteristic distance for stomatal pore depth (m)
 pore_depth = 1e-5
+min_ave_stomatal = 0.7
 
 # Physical constants
 SIGMA = 5.670374419e-8  # Stefan-Boltzmann constant (W/m².K⁴)

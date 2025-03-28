@@ -3,7 +3,7 @@
 This module defines and updates the environment (soil, atmosphere, etc.) for the Plantroid model.
 Comments are in English, while variable/function names in French are kept to ensure compatibility.
 """
-
+import global_constants as Gl
 import functions as Fu
 import random
 import math
@@ -38,8 +38,8 @@ Environment = {
     "base_light": 1000.0,          # peak light in summer (W/m²)
     "seasonal_light_var": 0.5,     # fraction of light variation winter vs summer
 
-    "precipitation_base": 1.9,     # mm of rain per day on average
-    "seasonal_rain_var": 0.3,     # fraction for seasonal variation in rain
+    "precipitation_base": 1.2,     # mm of rain per day on average
+    "seasonal_rain_var": 0.6,     # fraction for seasonal variation in rain
     "random_factor": 0.3,          # intensity of random weather factor (30%)
     "soil_volume": 10.00            # volume of soil in m³
 }
@@ -62,8 +62,8 @@ def update_environment(time, Env):
     - single location with temperate climate
     """
     # Convert time in hours to day index and hour of day
-    day_index = time // 24
-    hour_in_day = time % 24
+    day_index = time // Gl.ave_day
+    hour_in_day = time % Gl.ave_day
     day_of_year = day_index % 365
 
     # -----------------------------
@@ -169,8 +169,8 @@ def calc_daily_photoperiod(day_of_year):
     base_hours = 12.0
     amplitude = 4.0
     day_length = base_hours + amplitude * math.sin(seasonal_angle)
-    # clamp to [0..24]
-    return max(0.0, min(24.0, day_length))
+    # clamp to [0..Gl.ave_day]
+    return max(0.0, min(Gl.ave_day, day_length))
 
 
 def environment_hazards(Plant, Env):

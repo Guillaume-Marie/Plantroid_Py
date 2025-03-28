@@ -34,7 +34,9 @@ def set_plant_species(Plant, species_name, species_db):
 
     # Copy relevant parameters into the Plant dict
     Plant["growth_type"] = params["growth_type"]
+    Plant["leaf_shredding_ratio"] = params["leaf_shredding_ratio"]    
     Plant["T_optim"] = params["T_optim"]
+    Plant["dormancy_thrs_temp"] = params["dormancy_thrs_temp"]    
     Plant["r_max"] = params["r_max"]
     Plant["alpha"] = params["alpha"]
     Plant["temp_photo_sensitivity"] = params["temp_photo_sensitivity"]
@@ -54,7 +56,7 @@ def set_plant_species(Plant, species_name, species_db):
     Plant["transport_turnover"] = params["transport_turnover"]
     Plant["stock_growth_rate"] = params["stock_growth_rate"]   
     Plant["storage_fraction"] = params["storage_fraction"]
-    Plant["ratio_allocation"] = params["ratio_allocation"]
+    Plant["ratio_alloc"] = params["ratio_alloc"]
     Plant["cannibal_ratio"] = params["cannibal_ratio"]
     Plant["max_turgor_loss_frac"] = params["max_turgor_loss_frac"]    
     Plant["cost_params"] = params["cost_params"]
@@ -94,7 +96,7 @@ Plant = {
         "maintenance": {"sugar": 0.0, "water": 0.0, "nutrient": 0.0},
         "transpiration": {"sugar": 0.0, "water": 0.0, "nutrient": 0.0}
     },
-    "save_allocation": {"transport": 0.0,  "stock": 0.0,"absorp": 0.0, "photo": 0.0, "repro": 0.0},
+    "save_alloc": {"transport": 0.0,  "stock": 0.0,"absorp": 0.0, "photo": 0.0, "repro": 0.0},
     # Additional tracking of water needs and transpiration constraints
     "total_water_needed": 0.0,
     "transp_limit_pool": "none",
@@ -147,26 +149,27 @@ species_db = {
     "ble": {
         "growth_type": "annual",
         "T_optim": 22.0,
-        "r_max": 5.0e-3,
-        "alpha": 8.00e-4,
-        "temp_photo_sensitivity": 0.07,
+        "dormancy_thrs_temp":     3.0,
+        "r_max": 2.0e-2,
+        "alpha": 8.00e-2,
+        "temp_photo_sensitivity": 0.03,
         "sla_max": 0.02,
         "stomatal_conductance_min": 0.01,
         "leaf_size": 0.05,
         "leaf_albedo": 0.25,
         "leaf_emissivity": 0.95,
-        "watt_to_sugar_coeff": 2e-5,
-        "transport_coeff": 2e-2,
+        "watt_to_sugar_coeff": 5e-5,
+        "transport_coeff": 1.0,
         "soil_supply_coeff": 0.1,
-        "water_nutrient_coeff": 3.5e-4,
-        "stomatal_density": 4e7,
+        "water_nutrient_coeff": 8.5e-3,
+        "stomatal_density": 5e7,
         "alloc_change_rate": Gl.delta_adapt / 5,
         "alloc_repro_max": 0.84,
         "dessication_rate": Gl.delta_adapt * 3,
         "transport_turnover": Gl.delta_adapt / 20,
         "stock_growth_rate": Gl.delta_adapt,
-        "cannibal_ratio": 0.3,
-        "max_turgor_loss_frac": 0.10,
+        "cannibal_ratio": 0.01,
+        "max_turgor_loss_frac": 0.1,
         "reserve_ratio_ps": {"vegetative": 0.01/12, 
                           "making_reserve": 0.0, 
                           "reproduction": 0.05/12
@@ -180,7 +183,7 @@ species_db = {
             "maintenance": {"sugar": 5e-7, "water": 0.0, "nutrient": 0.0}
         },
         "storage_fraction": {"sugar": 0.05, "water": 0.05, "nutrient": 0.05},
-        "ratio_allocation": {"transport": 0.1,  "stock": 0.1,"absorp": 0.3, "photo": 0.5, "repro": 0.0},
+        "ratio_alloc": {"transport": 0.05,  "stock": 0.25,"absorp": 0.3, "photo": 0.3, "repro": 0.0},
         "reserve": {"sugar": 0.039, "water": 0.01, "nutrient": 0.003},
         "size": 1.0,
         "biomass_total": 0.01
@@ -189,6 +192,7 @@ species_db = {
     "mais": {
     "growth_type": "annual",   
     "T_optim": 30.0,                   # (°C) Température optimale pour la photosynthèse.
+    "dormancy_thrs_temp":     4.0,
     "temp_photo_sensitivity": 0.03,    # (°C⁻¹) Sensibilité (linéaire) de la photosynthèse à l’écart de T_optim.
     "r_max": 1.1e-2,                   # (h⁻¹) Taux de croissance « structurel » maximal (ex. +25–30 %/jour).
     "alpha": 4.5e-3,                   # (g⁻¹) Paramètre de saturation de la croissance monomoléculaire.
@@ -202,7 +206,7 @@ species_db = {
     "water_nutrient_coeff": 3.5e-4,    # (adimensionnel) Taux de nutriments absorbés par g d’eau transpiré.
     "stomatal_density": 10e8,          # (stomates/m²) Densité moyenne de stomates (ordre de 10⁷–10⁸).
     "stomatal_conductance_min": 0.02,  # (adimensionnel) Ouverture minimale (0..1) pour éviter fermeture complète.
-    "alloc_repro_max": 0.95,           # (fraction) Allocation max possible vers la reproduction.
+    "alloc_repro_max": 0.95,           # (fraction) alloc max possible vers la reproduction.
     "alloc_change_rate": Gl.delta_adapt / 3,  
     "dessication_rate": Gl.delta_adapt * 3, 
     "transport_turnover": Gl.delta_adapt / 20,
@@ -222,7 +226,7 @@ species_db = {
             "maintenance": {"sugar": 5e-7, "water": 0.0, "nutrient": 0.0}
         },
         "storage_fraction": {"sugar": 0.05, "water": 0.05, "nutrient": 0.05},
-        "ratio_allocation": {"transport": 0.1,  "stock": 0.1,"absorp": 0.3, "photo": 0.5, "repro": 0.0},
+        "ratio_alloc": {"transport": 0.1,  "stock": 0.1,"absorp": 0.3, "photo": 0.5, "repro": 0.0},
         "reserve": {"sugar": 0.039, "water": 0.01, "nutrient": 0.001},
         "size": 1.0,
         "biomass_total": 0.01
@@ -231,6 +235,7 @@ species_db = {
     "biannual herbaceous": {
         "growth_type": "biannual",
         "T_optim": 25.0,
+        "dormancy_thrs_temp":     4.0,
         "temp_photo_sensitivity": 0.03,    # (°C⁻¹) Sensibilité (linéaire) de la photosynthèse à l’écart de T_optim.
         "r_max": 4.78e-3,
         "alpha": 8.13e-4,
@@ -244,7 +249,7 @@ species_db = {
         "water_nutrient_coeff": 8.5e-4,    # (adimensionnel) Taux de nutriments absorbés par g d’eau transpiré.
         "stomatal_density": 10e7,          # (stomates/m²) Densité moyenne de stomates (ordre de 10⁷–10⁸).
         "stomatal_conductance_min": 0.02,  # (adimensionnel) Ouverture minimale (0..1) pour éviter fermeture complète.
-        "alloc_repro_max": 0.95,           # (fraction) Allocation max possible vers la reproduction.
+        "alloc_repro_max": 0.95,           # (fraction) alloc max possible vers la reproduction.
         "alloc_change_rate": Gl.delta_adapt / 3,  
         "dessication_rate": Gl.delta_adapt*2, 
         "transport_turnover": Gl.delta_adapt / 20,
@@ -266,7 +271,7 @@ species_db = {
             "maintenance": {"sugar": 5e-7, "water": 0.0, "nutrient": 0.0}
         },
         "storage_fraction": {"sugar": 0.05, "water": 0.05, "nutrient": 0.05},
-        "ratio_allocation": {"transport": 0.1,  "stock": 0.1,"absorp": 0.3, "photo": 0.5, "repro": 0.0},
+        "ratio_alloc": {"transport": 0.1,  "stock": 0.1,"absorp": 0.3, "photo": 0.5, "repro": 0.0},
         "reserve": {"sugar": 0.039, "water": 0.01, "nutrient": 0.01},
         "size": 1.0,
         "biomass_total": 0.01
@@ -275,6 +280,7 @@ species_db = {
     "perennial herbaceous": {
         "growth_type": "perennial",
         "T_optim": 25.0,
+        "dormancy_thrs_temp":     4.0,
         "temp_photo_sensitivity": 0.03,    # (°C⁻¹) Sensibilité (linéaire) de la photosynthèse à l’écart de T_optim.
         "r_max": 2.28e-3,
         "alpha": 8.13e-4,
@@ -288,7 +294,7 @@ species_db = {
         "water_nutrient_coeff": 8.5e-3,    # (adimensionnel) Taux de nutriments absorbés par g d’eau transpiré.
         "stomatal_density": 10e7,          # (stomates/m²) Densité moyenne de stomates (ordre de 10⁷–10⁸).
         "stomatal_conductance_min": 0.02,  # (adimensionnel) Ouverture minimale (0..1) pour éviter fermeture complète.
-        "alloc_repro_max": 0.05,           # (fraction) Allocation max possible vers la reproduction.
+        "alloc_repro_max": 0.05,           # (fraction) alloc max possible vers la reproduction.
         "alloc_change_rate": Gl.delta_adapt / 3,  
         "dessication_rate": Gl.delta_adapt*2, 
         "transport_turnover": Gl.delta_adapt / 5,
@@ -310,7 +316,7 @@ species_db = {
             "maintenance": {"sugar": 5e-7, "water": 0.0, "nutrient": 0.0}
         },
         "storage_fraction": {"sugar": 0.05, "water": 0.05, "nutrient": 0.05},
-        "ratio_allocation": {"transport": 0.1,  "stock": 0.0,"absorp": 0.45, "photo": 0.45, "repro": 0.0},
+        "ratio_alloc": {"transport": 0.1,  "stock": 0.0,"absorp": 0.45, "photo": 0.45, "repro": 0.0},
         "reserve": {"sugar": 0.039, "water": 0.01, "nutrient": 0.001},
         "size": 1.0,
         "biomass_total": 0.01
@@ -318,7 +324,9 @@ species_db = {
 
     "quercus_coccifera": {
         "growth_type": "perennial",
+        "leaf_shredding_ratio":   0.001,
         "T_optim": 25.0,
+        "dormancy_thrs_temp":     4.0,
         "temp_photo_sensitivity": 0.03,    # (°C⁻¹) Sensibilité (linéaire) de la photosynthèse à l’écart de T_optim.
         "r_max": 8.28e-3,
         "alpha": 4.13e-2,
@@ -332,7 +340,7 @@ species_db = {
         "water_nutrient_coeff": 8.5e-3,    # (adimensionnel) Taux de nutriments absorbés par g d’eau transpiré.
         "stomatal_density": 5e7,           # (stomates/m²) Densité moyenne de stomates (ordre de 10⁷–10⁸).
         "stomatal_conductance_min": 0.02,  # (adimensionnel) Ouverture minimale (0..1) pour éviter fermeture complète.
-        "alloc_repro_max": 0.05,           # (fraction) Allocation max possible vers la reproduction.
+        "alloc_repro_max": 0.05,           # (fraction) alloc max possible vers la reproduction.
         "alloc_change_rate": Gl.delta_adapt / 3,  
         "dessication_rate": Gl.delta_adapt*2, 
         "transport_turnover": Gl.delta_adapt / 5,
@@ -354,7 +362,7 @@ species_db = {
             "maintenance": {"sugar": 5e-7, "water": 0.0, "nutrient": 0.0}
         },
         "storage_fraction": {"sugar": 0.05, "water": 0.05, "nutrient": 0.05},
-        "ratio_allocation": {"transport": 0.1,  "stock": 0.1,"absorp": 0.5, "photo": 0.3, "repro": 0.0},       
+        "ratio_alloc": {"transport": 0.1,  "stock": 0.1,"absorp": 0.5, "photo": 0.3, "repro": 0.0},       
         "reserve": {"sugar": 0.039, "water": 0.01, "nutrient": 0.001},
         "size": 1.0,
         "biomass_total": 0.01
@@ -362,8 +370,8 @@ species_db = {
 
     "quercus_ilex": {
         "growth_type": "perennial",
-        "photoperiod_for_repro": 15.5,
         "T_optim": 25.0,
+        "dormancy_thrs_temp":     4.0,
         "r_max": 2.28e-3,
         "alpha": 8.13e-5,
         "temp_photo_sensitivity": 0.05,
@@ -391,7 +399,7 @@ species_db = {
             "maintenance": {"sugar": 5e-7, "water": 0.0, "nutrient": 0.0}
         },
         "storage_fraction": {"sugar": 0.05, "water": 0.05, "nutrient": 0.05},
-        "ratio_allocation": {"transport": 0.1,  "stock": 0.1,"absorp": 0.3, "photo": 0.5, "repro": 0.0},
+        "ratio_alloc": {"transport": 0.1,  "stock": 0.1,"absorp": 0.3, "photo": 0.5, "repro": 0.0},
         "reserve": {"sugar": 0.039, "water": 0.01, "nutrient": 0.001},
         "size": 1.0,
         "biomass_total": 0.01
@@ -428,7 +436,7 @@ species_db = {
             "maintenance": {"sugar": 5e-7, "water": 0.0, "nutrient": 0.0}
         },
         "storage_fraction": {"sugar": 0.05, "water": 0.05, "nutrient": 0.05},
-        "ratio_allocation": {"transport": 0.1,  "stock": 0.1,"absorp": 0.3, "photo": 0.5, "repro": 0.0},
+        "ratio_alloc": {"transport": 0.1,  "stock": 0.1,"absorp": 0.3, "photo": 0.5, "repro": 0.0},
         "reserve": {"sugar": 0.039, "water": 0.01, "nutrient": 0.001},
         "size": 1.0,
         "biomass_total": 0.01
@@ -465,7 +473,7 @@ species_db = {
             "maintenance": {"sugar": 5e-7, "water": 0.0, "nutrient": 0.0}
         },
         "storage_fraction": {"sugar": 0.05, "water": 0.05, "nutrient": 0.05},
-        "ratio_allocation": {"transport": 0.1,  "stock": 0.1,"absorp": 0.3, "photo": 0.5, "repro": 0.0},
+        "ratio_alloc": {"transport": 0.1,  "stock": 0.1,"absorp": 0.3, "photo": 0.5, "repro": 0.0},
         "reserve": {"sugar": 0.039, "water": 0.01, "nutrient": 0.001},
         "size": 1.0,
         "biomass_total": 0.01

@@ -40,9 +40,6 @@ def run_simulation_collect_data(max_cycles):
           - Plant   : the final plant state at the end of simulation
           - Environment : the final state of environment
     """
-    # Choisissez une date de début pour la simulation
-    start_date = datetime(2025, 1, 1)  # Exemple: 1er janvier 2025
-
     # Local time counter (in hours)
     sim_time = 0
 
@@ -51,7 +48,7 @@ def run_simulation_collect_data(max_cycles):
 
     # Initialize soil water content to 50% of the soil volume
     Ev.Environment["soil"]["water"] = (
-        Ev.Environment["soil_volume"] * 1000.0 * 1000.0 * 0.5
+        Ev.Environment["soil_volume"] * 1000.0 * 1000.0 * 0.01
     )
 
     # Track minimum daily temperatures
@@ -65,8 +62,8 @@ def run_simulation_collect_data(max_cycles):
         cycle_count += 1
 
         # Hour in day (0..23) and current day index
-        hour_in_day = sim_time % 24
-        day_index = sim_time // 24
+        hour_in_day = sim_time % Gl.ave_day
+        day_index = sim_time // Gl.ave_day
 
         # Update environment (temperature, light, rain, etc.)
         Ev.update_environment(sim_time, Ev.Environment)
@@ -94,18 +91,19 @@ def run_simulation_collect_data(max_cycles):
         # If a new day has started, handle daily checks
         if day_index != previous_day_index:
             # If stomatal conductance was low in the previous day, adapt water strategy
-            last_24_stomatal = Hi.history["stomatal_conductance"][-24:]
-            if len(last_24_stomatal) == 24:
-                if np.mean(last_24_stomatal) < 0.7:
+            last_stomatal = Hi.history["stomatal_conductance"][-Gl.ave_day:]
+            if len(last_stomatal) == Gl.ave_day:
+                if np.mean(last_stomatal) < Gl.min_ave_stomatal:
                     Fu.adapt_water_supply(Pl.Plant, Ev.Environment)
-            nutrient_slope = Fu.slope_last_hours(Hi.history["reserve_nutrient"], nb_hours=24 * 3)
+            nutrient_slope = Fu.slope_last_hours(Hi.history["reserve_nutrient"], 
+                                                 nb_hours = Gl.ave_day * Gl.nb_days)
             #print(nutrient_slope)
-            if nutrient_slope < -1e-9:
+            if nutrient_slope < Gl.slope_thrs:
                 Fu.adapt_nutrient_supply(Pl.Plant,"bad")
             else:
                 Fu.adapt_nutrient_supply(Pl.Plant,"good")
-            if Pl.Plant["phenology_stage"] == "vegetative": 
-                Fu.adapt_stock_supply(Pl.Plant)
+            #if Pl.Plant["phenology_stage"] == "vegetative": 
+            #    Fu.adapt_stock_supply(Pl.Plant)
 
             # Reset stomatal conductance and leaf angle each day
             Pl.Plant["stomatal_conductance"] = 1.0
