@@ -77,6 +77,7 @@ Plant = {
     # Dynamic regulation / morphological attributes
     "stomatal_conductance": 1.0,
     "nutrient_index": 1.0,
+    "dormancy_index": 1.0,   
     "trans_cooling": 0.0,
     "leaf_angle": 0.0,
     "temperature": {"photo": 0.0},
@@ -326,7 +327,7 @@ species_db = {
         "growth_type": "perennial",
         "leaf_shredding_ratio":   0.001,
         "T_optim": 25.0,
-        "dormancy_thrs_temp":     4.0,
+        "dormancy_thrs_temp":     5.0,
         "temp_photo_sensitivity": 0.03,    # (°C⁻¹) Sensibilité (linéaire) de la photosynthèse à l’écart de T_optim.
         "r_max": 8.28e-3,
         "alpha": 4.13e-2,

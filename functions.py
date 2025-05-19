@@ -504,7 +504,6 @@ def post_process_resist(Plant, Env, process):
     """
     if process == "maintenance":
         pay_cost(Plant, Env, process)
-        ajust_maintenance_cost(Plant, "bad")
     elif process == "extension":
         allocate_biomass(Plant, Plant["new_biomass"])
         pay_cost(Plant, Env, process)
@@ -521,7 +520,7 @@ def post_process_fail(Plant, Env, process):
         pay_cost(Plant, Env, process)
         degrade_health_state(Plant)
         ensure_maintenance_sugar(Plant, Env)
-        ajust_maintenance_cost(Plant, "bad")
+
 
     elif process == "extension":
         adjust_success_cycle(Plant, "extension")
@@ -617,11 +616,7 @@ def calculate_cost(Plant, process):
     - Reproduction: depends on reproduction_ref
     """
     if process == "maintenance":
-        if Plant["phenology_stage"] != "dormancy":
-            cost_factor = Plant["cost_params"]["maintenance"]["sugar"]
-        else:
-            cost_factor = Plant["cost_params"]["maintenance"]["sugar"]/10
-
+        cost_factor = Plant["cost_params"]["maintenance"]["sugar"]
         Plant["cost"]["maintenance"]["sugar"] = (cost_factor * 
                                 Gl.DT * Plant["biomass_total"])
     elif process == "secondary":
@@ -873,26 +868,19 @@ def allocate_biomass(Plant, nb):
 
     update_biomass_total(Plant)
 
-def ajust_maintenance_cost(Plant, cond):
-    pass        
-    if cond == "bad":
-        Plant["cost_params"]["photo"]["sugar"] = max(5e-10,
-            Plant["cost_params"]["photo"]["sugar"] - Gl.delta_adapt/10000)
-        Plant["cost_params"]["absorp"]["sugar"] = max(5e-10,
-            Plant["cost_params"]["absorp"]["sugar"] - Gl.delta_adapt/10000)
-        Plant["cost_params"]["transport"]["sugar"] = max(5e-10,
-            Plant["cost_params"]["transport"]["sugar"] - Gl.delta_adapt/10000)
-        Plant["cost_params"]["stock"]["sugar"] = max(5e-10,
-            Plant["cost_params"]["stock"]["sugar"] - Gl.delta_adapt/10000)       
+def adjust_dormancy_index(Plant):
+    Plant["dormancy_index"] = (Plant["cost_params"]["maintenance"]["sugar"]-5e-9)/(5e-7-5e-10)
+
+def ajust_maintenance_cost(Plant, cond, delta=0.1):      
+    if cond == "bad":            
+        Plant["cost_params"]["maintenance"]["sugar"] = max(5e-9,
+            Plant["cost_params"]["maintenance"]["sugar"] * (1-delta))      
     elif cond == "good":
-        Plant["cost_params"]["photo"]["sugar"] = min(5e-7,
-            Plant["cost_params"]["photo"]["sugar"] + Gl.delta_adapt/10000)
-        Plant["cost_params"]["absorp"]["sugar"] = min(5e-7,
-            Plant["cost_params"]["absorp"]["sugar"] + Gl.delta_adapt/10000)
-        Plant["cost_params"]["transport"]["sugar"] = min(5e-7,
-            Plant["cost_params"]["transport"]["sugar"] + Gl.delta_adapt/10000) 
-        Plant["cost_params"]["stock"]["sugar"] = min(5e-7,
-            Plant["cost_params"]["stock"]["sugar"] + Gl.delta_adapt/10000)       
+        Plant["cost_params"]["maintenance"]["sugar"] = min(5e-7,
+            Plant["cost_params"]["maintenance"]["sugar"] * (1+(delta)))
+
+    calculate_cost(Plant, "maintenance")   
+    adjust_dormancy_index(Plant)  
 
 def adjust_success_cycle(Plant, process):
     """
@@ -969,7 +957,6 @@ def phenology_biannual(Plant, Env, day_index, daily_min_temps):
     if (photo_slope < Gl.slope_thrs and 
         photoperiod_today < photoperiod_yesterday and
         Plant["phenology_stage"] == "vegetative"):
-
         Plant["phenology_stage"] = "making_reserve"
         update_phenological_parameters(Plant)
         return
@@ -995,7 +982,7 @@ def phenology_perennial(Plant, Env, day_index, daily_min_temps):
     photoperiod_today = Ev.calc_daily_photoperiod(day_index)
     photoperiod_yesterday = Ev.calc_daily_photoperiod(day_index - 1)
     Gl.count_ph += 1
-    if Plant["phenology_stage"] == "making_reserve" and  Gl.count_ph > Gl.ave_day * Gl.nb_days:
+    if (Gl.count_ph > Gl.ave_day * Gl.nb_days):
         cost = np.array(Hi.history.get("cost_maintenance_sugar"))
         photo = np.array(Hi.history.get("actual_sugar"))
         delta = cost-photo
@@ -1004,27 +991,30 @@ def phenology_perennial(Plant, Env, day_index, daily_min_temps):
         sugar_mean = 0.0
 
     # Germination check
-    if Plant["phenology_stage"] in ["seed"]:
+    if Plant["phenology_stage"] == "seed":
         if len(daily_min_temps) >= Gl.ave_week and all(t > Plant["dormancy_thrs_temp"] for t in daily_min_temps[-Gl.ave_week:]):
             Plant["phenology_stage"] = "vegetative"
             update_phenological_parameters(Plant)
         return
     
-    if Plant["phenology_stage"] in ["dormancy"] and day_index > 365:
+    if Plant["phenology_stage"] == "dormancy" and day_index > 365:
         if len(daily_min_temps) >= Gl.ave_week and all(t > Plant["dormancy_thrs_temp"] for t in daily_min_temps[-Gl.ave_week:]):
             Plant["phenology_stage"] = "reproduction"
+            Plant["dormancy_index"] = 1.0
+            Plant["cost_params"]["maintenance"]["sugar"] = 5e-7
             update_phenological_parameters(Plant)
         return
     
-    if Plant["phenology_stage"] in ["reproduction"] and photoperiod_today > 14:
+    if Plant["phenology_stage"] == "reproduction" and photoperiod_today > 14:
         Plant["phenology_stage"] = "vegetative"
         Plant["ratio_alloc"] = Plant["save_alloc"]
         check_alloc(Plant)
         update_phenological_parameters(Plant)
+        Gl.count_ph = 0
         return   
    
     # optimize reserve build-up
-    if (photoperiod_today < photoperiod_yesterday and
+    if (sugar_mean < Gl.slope_thrs and
         Plant["phenology_stage"] == "vegetative"):
 
         Plant["phenology_stage"] = "making_reserve"

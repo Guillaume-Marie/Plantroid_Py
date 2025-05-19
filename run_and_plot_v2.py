@@ -258,6 +258,7 @@ def simulate_and_plot(species_name, start_date=datetime(2025, 1, 1)):
     # (1,1) Stomates / angle / nutrient_index
     ax = day_axes[2, 1]
     ax.plot(day_date_list, day_data["nutrient_index"], label="nutrient_index", color="green")
+    ax.plot(day_date_list, day_data["dormancy_index"], label="dormancy_index", color="orange")    
     ax.set_xlabel("Date")
     ax.set_ylabel("Index (0..1)")
     ax.set_title("Régulation stomates / angle / nutriment")

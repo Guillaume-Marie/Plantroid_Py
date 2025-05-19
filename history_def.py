@@ -53,6 +53,7 @@ history = {
     # Process costs
     "cost_transpiration_water": [],
     "cost_maintenance_sugar": [],
+    "dormancy_index": [],   
     "cost_extension_sugar": [],
     "cost_extension_water": [],
     "cost_extension_nutrient": [],
@@ -142,6 +143,7 @@ def history_update(Plant, history, Environment, time):
     # Process costs
     history["cost_transpiration_water"].append(Plant["cost"]["transpiration"]["water"])
     history["cost_maintenance_sugar"].append(Plant["cost"]["maintenance"]["sugar"])
+    history["dormancy_index"].append(Plant["dormancy_index"])    
     history["cost_extension_sugar"].append(Plant["cost"]["extension"]["sugar"])
     history["cost_extension_water"].append(Plant["cost"]["extension"]["water"])
     history["cost_extension_nutrient"].append(Plant["cost"]["extension"]["nutrient"])

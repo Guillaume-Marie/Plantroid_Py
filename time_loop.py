@@ -97,6 +97,8 @@ def run_simulation_collect_data(max_cycles):
                     Fu.adapt_water_supply(Pl.Plant, Ev.Environment)
             nutrient_slope = Fu.slope_last_hours(Hi.history["reserve_nutrient"], 
                                                  nb_hours = Gl.ave_day * Gl.nb_days)
+            sugar_slope = Fu.slope_last_hours(Hi.history["reserve_sugar"], 
+                                                 nb_hours = Gl.ave_day * Gl.nb_days)
             #print(nutrient_slope)
             if nutrient_slope < Gl.slope_thrs:
                 Fu.adapt_nutrient_supply(Pl.Plant,"bad")
@@ -108,6 +110,10 @@ def run_simulation_collect_data(max_cycles):
             # Reset stomatal conductance and leaf angle each day
             Pl.Plant["stomatal_conductance"] = 1.0
             Pl.Plant["leaf_angle"] = 0.0
+            if sugar_slope < Gl.slope_thrs:
+                Fu.ajust_maintenance_cost(Pl.Plant, "bad")
+            else:
+                Fu.ajust_maintenance_cost(Pl.Plant, "good")
 
             # Manage plant phenology (e.g. germination, dormancy, reproduction)
             Fu.manage_phenology(Pl.Plant, Ev.Environment, 
@@ -169,23 +175,25 @@ def run_simulation_collect_data(max_cycles):
             if Pl.Plant["phenology_stage"] == "reproduction":
                 Fu.adapt_for_reproduction(Pl.Plant)
 
-            # If in dessication stage
-            if Pl.Plant["phenology_stage"] == "dessication":
-                Fu.dessication(Pl.Plant, Ev.Environment, day_index)
-
             # If in vegetative stage
-            if (Pl.Plant["phenology_stage"] == "vegetative" or 
-                Pl.Plant["phenology_stage"] == "reproduction"):
+            if ((Pl.Plant["phenology_stage"] == "vegetative" or 
+                Pl.Plant["phenology_stage"] == "reproduction") and 
+                Pl.Plant["dormancy_index"] >= 0.75):
                 Fu.handle_process(Pl.Plant, Ev.Environment, "extension")
                 Fu.update_success_history(Pl.Plant, "extension")
             
             if (Pl.Plant["phenology_stage"] == "making_reserve" and 
-                Pl.Plant["growth_type"] == "perennial"):
+                Pl.Plant["growth_type"] == "perennial" and
+                Pl.Plant["dormancy_index"] >= 0.5):
                 Fu.handle_process(Pl.Plant, Ev.Environment, "secondary")
 
             # Finally, transfer any remaining flux_in to internal reserves
             Fu.refill_reserve(Pl.Plant, "sugar")
             Fu.refill_reserve(Pl.Plant, "nutrient")
+
+        # If in dessication stage
+        if Pl.Plant["phenology_stage"] == "dessication":
+            Fu.dessication(Pl.Plant, Ev.Environment, day_index)
 
         Fu.destroy_biomass(Pl.Plant, Ev.Environment, "necromass", Pl.Plant["transport_turnover"]/10)
         # Check for negative pools or fluxes, stop if it occurs
